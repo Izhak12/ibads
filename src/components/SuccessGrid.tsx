@@ -1,10 +1,25 @@
 import { motion } from "framer-motion";
 
-export function SuccessGrid({ count, onReset }: { count: number; onReset: () => void }) {
-  const cols = count <= 2 ? 1 : count <= 4 ? 2 : 3;
+function layoutFor(count: number): { cols: number; rows: number } {
+  if (count <= 1) return { cols: 1, rows: 1 };
+  if (count <= 4) return { cols: 2, rows: 2 };
+  if (count <= 9) return { cols: 3, rows: 3 };
+  return { cols: 4, rows: 3 };
+}
+
+export function SuccessGrid({
+  images,
+  onReset,
+}: {
+  images: string[];
+  onReset: () => void;
+}) {
+  const count = images.length;
+  const { cols, rows } = layoutFor(count);
+
   return (
-    <div className="w-full max-w-3xl flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+    <div className="w-full h-full flex flex-col gap-4 min-h-0">
+      <div className="flex items-center justify-between shrink-0">
         <div>
           <div className="text-xl font-semibold text-[#0B192C] tracking-tight">
             הגרפיקות מוכנות
@@ -20,39 +35,40 @@ export function SuccessGrid({ count, onReset }: { count: number; onReset: () => 
           צור שוב
         </button>
       </div>
-      <div
-        className="grid gap-4"
-        style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
-      >
-        {Array.from({ length: count }).map((_, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, y: 16, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{
-              delay: i * 0.06,
-              duration: 0.5,
-              ease: [0.22, 1, 0.36, 1],
-            }}
-            className="relative aspect-square rounded-2xl overflow-hidden bg-white shadow-[0_10px_30px_-15px_rgba(11,25,44,0.25)] border border-black/5"
-          >
-            <div
-              className="absolute inset-0"
-              style={{
-                background: `linear-gradient(${135 + i * 20}deg, #0B192C 0%, #1E3A5F 45%, #1E67FF 100%)`,
+
+      <div className="flex-1 min-h-0 flex items-center justify-center">
+        <div
+          className="grid gap-3 h-full w-full"
+          style={{
+            gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+            gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
+            aspectRatio: `${cols} / ${rows}`,
+            maxHeight: "100%",
+            maxWidth: "100%",
+            margin: "0 auto",
+          }}
+        >
+          {images.map((src, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 12, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{
+                delay: i * 0.07,
+                duration: 0.55,
+                ease: [0.22, 1, 0.36, 1],
               }}
-            />
-            <div className="absolute inset-0 opacity-40 mix-blend-overlay"
-              style={{
-                background:
-                  "radial-gradient(circle at 30% 20%, rgba(255,255,255,0.6), transparent 50%)",
-              }}
-            />
-            <div className="absolute bottom-3 right-3 text-white/90 text-xs font-medium tracking-wide">
-              גרפיקה {i + 1}
-            </div>
-          </motion.div>
-        ))}
+              className="relative min-w-0 min-h-0 rounded-2xl overflow-hidden bg-white shadow-[0_10px_30px_-15px_rgba(11,25,44,0.25)] border border-black/5"
+            >
+              <img
+                src={src}
+                alt={`גרפיקה ${i + 1}`}
+                className="w-full h-full object-cover"
+                loading="eager"
+              />
+            </motion.div>
+          ))}
+        </div>
       </div>
     </div>
   );

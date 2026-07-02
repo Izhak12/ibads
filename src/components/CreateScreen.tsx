@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Plus, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 import {
   Select,
   SelectContent,
@@ -20,10 +21,37 @@ export function CreateScreen() {
   const [brief, setBrief] = useState("");
   const [count, setCount] = useState(3);
   const [preview, setPreview] = useState<PreviewState>("idle");
+  const [images, setImages] = useState<string[]>([]);
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     setPreview("loading");
-    setTimeout(() => setPreview("success"), 3200);
+    setImages([]);
+    const client = clients.find((c) => c.id === selectedClientId);
+    try {
+      const res = await fetch("/api/generate-graphics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientName: client?.name ?? "",
+          clientIndustry: client?.industry ?? "",
+          targetAudience: client?.targetAudience ?? "",
+          brandColors: client?.brandColors ?? [],
+          text,
+          brief,
+          amount: count,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error ?? "שגיאה");
+      setImages(data.images);
+      setPreview("success");
+    } catch (err) {
+      console.error(err);
+      toast.error("שגיאה ביצירת הגרפיקות", {
+        description: err instanceof Error ? err.message : undefined,
+      });
+      setPreview("idle");
+    }
   };
 
   return (
@@ -135,7 +163,7 @@ export function CreateScreen() {
         </div>
       </div>
 
-      <PreviewPanel state={preview} count={count} onReset={() => setPreview("idle")} />
+      <PreviewPanel state={preview} images={images} onReset={() => setPreview("idle")} />
     </>
   );
 }
