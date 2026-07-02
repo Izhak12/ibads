@@ -2,24 +2,53 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import logo from "@/assets/ibdigital-logo.jpg.asset.json";
+import { supabase } from "@/integrations/supabase/client";
 
 type Mode = "login" | "signup";
 
-export function AuthScreen({ onAuthenticated }: { onAuthenticated?: () => void }) {
+export function AuthScreen() {
   const [mode, setMode] = useState<Mode>("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return;
     if (mode === "signup" && !name.trim()) return;
-    toast.success(mode === "login" ? "התחברת בהצלחה" : "החשבון נוצר בהצלחה", {
-      description: "ברוך הבא ל־IBDIGITAL",
-    });
-    onAuthenticated?.();
+    setSubmitting(true);
+    try {
+      if (mode === "login") {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) throw error;
+        toast.success("התחברת בהצלחה", { description: "ברוך הבא ל־IBDIGITAL" });
+      } else {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { full_name: name.trim() },
+            emailRedirectTo: `${window.location.origin}/`,
+          },
+        });
+        if (error) throw error;
+        toast.success("החשבון נוצר בהצלחה", {
+          description: "ברוך הבא ל־IBDIGITAL",
+        });
+      }
+    } catch (err) {
+      toast.error("שגיאה", {
+        description: err instanceof Error ? err.message : "נסה שוב",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
+
 
 
   return (
