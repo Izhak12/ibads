@@ -132,10 +132,12 @@ export function AuthScreen() {
 
           <button
             type="submit"
-            className="mt-3 h-13 py-4 rounded-2xl bg-[#0B192C] text-white text-sm font-medium hover:bg-[#0B192C]/90 active:scale-[0.98] transition-all shadow-[0_10px_30px_-12px_rgba(11,25,44,0.5)] hover:shadow-[0_10px_30px_-8px_rgba(30,103,255,0.4)]"
+            disabled={submitting}
+            className="mt-3 h-13 py-4 rounded-2xl bg-[#0B192C] text-white text-sm font-medium hover:bg-[#0B192C]/90 active:scale-[0.98] transition-all shadow-[0_10px_30px_-12px_rgba(11,25,44,0.5)] hover:shadow-[0_10px_30px_-8px_rgba(30,103,255,0.4)] disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {mode === "login" ? "התחבר" : "הירשם"}
+            {submitting ? "רגע…" : mode === "login" ? "התחבר" : "הירשם"}
           </button>
+
 
           <div className="text-center text-xs text-black/50 mt-2">
             {mode === "login" ? (
