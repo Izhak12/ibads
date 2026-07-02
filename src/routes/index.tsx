@@ -16,6 +16,7 @@ export const Route = createFileRoute("/")({
 const ease = [0.22, 1, 0.36, 1] as const;
 
 function Index() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [tab, setTab] = useState<Tab>("create");
 
   return (
@@ -25,24 +26,37 @@ function Index() {
         className="flex h-screen w-full font-sans antialiased"
         style={{ backgroundColor: "#F5F5F7" }}
       >
-        <Sidebar active={tab} onChange={setTab} />
+        {!isAuthenticated ? (
+          <AuthScreen onAuthenticated={() => setIsAuthenticated(true)} />
+        ) : (
+          <>
+            <Sidebar
+              active={tab}
+              onChange={setTab}
+              onLogout={() => {
+                setIsAuthenticated(false);
+                setTab("create");
+              }}
+            />
 
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={tab}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.25, ease }}
-            className="flex flex-1 min-w-0"
-          >
-            {tab === "create" && <CreateScreen />}
-            {tab === "clients" && <ClientsScreen />}
-            {tab === "auth" && <AuthScreen />}
-          </motion.div>
-        </AnimatePresence>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={tab}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25, ease }}
+                className="flex flex-1 min-w-0"
+              >
+                {tab === "create" && <CreateScreen />}
+                {tab === "clients" && <ClientsScreen />}
+              </motion.div>
+            </AnimatePresence>
 
-        <ClientDialog />
+            <ClientDialog />
+          </>
+        )}
+
         <Toaster position="top-center" />
       </div>
     </ClientsProvider>

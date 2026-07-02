@@ -5,18 +5,22 @@ import logo from "@/assets/ibdigital-logo.jpg.asset.json";
 
 type Mode = "login" | "signup";
 
-export function AuthScreen() {
+export function AuthScreen({ onAuthenticated }: { onAuthenticated?: () => void }) {
   const [mode, setMode] = useState<Mode>("login");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return;
+    if (mode === "signup" && !name.trim()) return;
     toast.success(mode === "login" ? "התחברת בהצלחה" : "החשבון נוצר בהצלחה", {
       description: "ברוך הבא ל־IBDIGITAL",
     });
+    onAuthenticated?.();
   };
+
 
   return (
     <div className="flex-1 h-screen flex items-center justify-center p-10 overflow-y-auto">
@@ -60,6 +64,19 @@ export function AuthScreen() {
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {mode === "signup" && (
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-[#0B192C]/80">שם מלא</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="ישראל ישראלי"
+                className="w-full h-12 px-4 rounded-2xl bg-black/[0.03] border border-black/5 text-sm text-[#0B192C] placeholder:text-black/30 focus:outline-none focus:bg-white focus:border-[#1E67FF]/40 focus:ring-4 focus:ring-[#1E67FF]/10 transition-all"
+              />
+            </div>
+          )}
+
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium text-[#0B192C]/80">אימייל</label>
             <input
@@ -71,6 +88,7 @@ export function AuthScreen() {
               className="w-full h-12 px-4 rounded-2xl bg-black/[0.03] border border-black/5 text-sm text-[#0B192C] placeholder:text-black/30 focus:outline-none focus:bg-white focus:border-[#1E67FF]/40 focus:ring-4 focus:ring-[#1E67FF]/10 transition-all text-right"
             />
           </div>
+
 
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium text-[#0B192C]/80">סיסמה</label>
@@ -90,13 +108,14 @@ export function AuthScreen() {
             {mode === "login" ? "התחבר" : "הירשם"}
           </button>
 
-          <div className="text-center text-xs text-black/40 mt-2">
+          <div className="text-center text-xs text-black/50 mt-2">
             {mode === "login" ? (
-              <>אין לך חשבון? <button type="button" onClick={() => setMode("signup")} className="text-[#1E67FF] font-medium hover:underline">הרשם עכשיו</button></>
+              <>אין לך משתמש?{" "}<button type="button" onClick={() => setMode("signup")} className="text-[#1E67FF] font-medium hover:underline">הרשם</button></>
             ) : (
-              <>יש לך כבר חשבון? <button type="button" onClick={() => setMode("login")} className="text-[#1E67FF] font-medium hover:underline">התחבר</button></>
+              <>כבר יש לך חשבון?{" "}<button type="button" onClick={() => setMode("login")} className="text-[#1E67FF] font-medium hover:underline">התחבר</button></>
             )}
           </div>
+
         </form>
       </motion.div>
     </div>
