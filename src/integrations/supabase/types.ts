@@ -14,7 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      clients: {
+        Row: {
+          brand_colors: string[]
+          brand_vibe: string
+          brief: string
+          core_offers: string
+          created_at: string
+          id: string
+          industry: string
+          name: string
+          target_audience: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          brand_colors?: string[]
+          brand_vibe?: string
+          brief?: string
+          core_offers?: string
+          created_at?: string
+          id?: string
+          industry?: string
+          name: string
+          target_audience?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          brand_colors?: string[]
+          brand_vibe?: string
+          brief?: string
+          core_offers?: string
+          created_at?: string
+          id?: string
+          industry?: string
+          name?: string
+          target_audience?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
