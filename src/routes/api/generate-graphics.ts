@@ -42,15 +42,18 @@ async function generateOne(prompt: string, apiKey: string): Promise<string> {
       n: 1,
       size: "1024x1024",
       quality: "standard",
-      response_format: "url",
     }),
   });
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`OpenAI ${res.status}: ${text}`);
   }
-  const json = (await res.json()) as { data: Array<{ url: string }> };
-  return json.data[0].url;
+  const json = (await res.json()) as { data: Array<{ url?: string; b64_json?: string }> };
+  const item = json.data[0];
+  if (item.url) return item.url;
+  if (item.b64_json) return `data:image/png;base64,${item.b64_json}`;
+  throw new Error("OpenAI returned no image data");
+
 }
 
 export const Route = createFileRoute("/api/generate-graphics")({
