@@ -5,6 +5,7 @@ const InputSchema = z.object({
   clientName: z.string().optional().default(""),
   clientIndustry: z.string().optional().default(""),
   targetAudience: z.string().optional().default(""),
+  brandVibe: z.string().optional().default(""),
   brandColors: z.array(z.string()).optional().default([]),
   text: z.string().optional().default(""),
   brief: z.string().optional().default(""),
@@ -19,9 +20,10 @@ function buildPrompt(input: z.infer<typeof InputSchema>, variant: number) {
   if (input.clientName) parts.push(`Brand: ${input.clientName}.`);
   if (input.clientIndustry) parts.push(`Industry: ${input.clientIndustry}.`);
   if (input.targetAudience) parts.push(`Target audience: ${input.targetAudience}.`);
+  if (input.brandVibe) parts.push(`Brand vibe / tone: ${input.brandVibe}.`);
   if (input.brandColors.length)
     parts.push(`Brand color palette: ${input.brandColors.join(", ")}.`);
-  if (input.brief) parts.push(`Creative brief: ${input.brief}.`);
+  if (input.brief) parts.push(`Creative brief (follow closely):\n${input.brief}`);
   if (input.text) parts.push(`Include this exact Hebrew text prominently: "${input.text}".`);
   parts.push(`Design variation ${variant} — unique composition, colors and layout from other variants.`);
   return parts.join(" ");
