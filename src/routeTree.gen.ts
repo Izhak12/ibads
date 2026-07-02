@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiGenerateGraphicsRouteImport } from './routes/api/generate-graphics'
+import { Route as ApiGenerateBriefRouteImport } from './routes/api/generate-brief'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,30 +23,39 @@ const ApiGenerateGraphicsRoute = ApiGenerateGraphicsRouteImport.update({
   path: '/api/generate-graphics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGenerateBriefRoute = ApiGenerateBriefRouteImport.update({
+  id: '/api/generate-brief',
+  path: '/api/generate-brief',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/generate-brief': typeof ApiGenerateBriefRoute
   '/api/generate-graphics': typeof ApiGenerateGraphicsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/generate-brief': typeof ApiGenerateBriefRoute
   '/api/generate-graphics': typeof ApiGenerateGraphicsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/generate-brief': typeof ApiGenerateBriefRoute
   '/api/generate-graphics': typeof ApiGenerateGraphicsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/generate-graphics'
+  fullPaths: '/' | '/api/generate-brief' | '/api/generate-graphics'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/generate-graphics'
-  id: '__root__' | '/' | '/api/generate-graphics'
+  to: '/' | '/api/generate-brief' | '/api/generate-graphics'
+  id: '__root__' | '/' | '/api/generate-brief' | '/api/generate-graphics'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiGenerateBriefRoute: typeof ApiGenerateBriefRoute
   ApiGenerateGraphicsRoute: typeof ApiGenerateGraphicsRoute
 }
 
@@ -65,11 +75,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGenerateGraphicsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/generate-brief': {
+      id: '/api/generate-brief'
+      path: '/api/generate-brief'
+      fullPath: '/api/generate-brief'
+      preLoaderRoute: typeof ApiGenerateBriefRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiGenerateBriefRoute: ApiGenerateBriefRoute,
   ApiGenerateGraphicsRoute: ApiGenerateGraphicsRoute,
 }
 export const routeTree = rootRouteImport

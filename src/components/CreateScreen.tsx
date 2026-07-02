@@ -35,9 +35,10 @@ export function CreateScreen() {
           clientName: client?.name ?? "",
           clientIndustry: client?.industry ?? "",
           targetAudience: client?.targetAudience ?? "",
+          brandVibe: client?.brandVibe ?? "",
           brandColors: client?.brandColors ?? [],
           text,
-          brief,
+          brief: [client?.brief, brief].filter(Boolean).join("\n\n"),
           amount: count,
         }),
       });
