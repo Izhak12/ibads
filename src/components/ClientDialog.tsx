@@ -110,7 +110,7 @@ export function ClientDialog({
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim()) return;
     const payload = {
       name: name.trim(),
@@ -121,16 +121,23 @@ export function ClientDialog({
       brandColors: colors,
       brief: brief.trim(),
     };
-    if (editing) {
-      updateClient(editing.id, payload);
-      toast.success("הלקוח עודכן");
-    } else {
-      const created = addClient(payload);
-      onCreated?.(created.id);
-      toast.success("הלקוח נוסף");
+    try {
+      if (editing) {
+        await updateClient(editing.id, payload);
+        toast.success("הלקוח עודכן");
+      } else {
+        const created = await addClient(payload);
+        onCreated?.(created.id);
+        toast.success("הלקוח נוסף");
+      }
+      setClientDialogOpen(false);
+    } catch (err) {
+      toast.error("שגיאה בשמירת הלקוח", {
+        description: err instanceof Error ? err.message : undefined,
+      });
     }
-    setClientDialogOpen(false);
   };
+
 
   return (
     <Dialog open={clientDialogOpen} onOpenChange={setClientDialogOpen}>
