@@ -122,7 +122,15 @@ export function ClientsProvider({ children }: { children: ReactNode }) {
       id: string;
       patch: Partial<Omit<Client, "id">>;
     }) => {
-      const row: Record<string, unknown> = {};
+      const row: {
+        name?: string;
+        industry?: string;
+        target_audience?: string;
+        brand_vibe?: string;
+        core_offers?: string;
+        brand_colors?: string[];
+        brief?: string;
+      } = {};
       if (patch.name !== undefined) row.name = patch.name;
       if (patch.industry !== undefined) row.industry = patch.industry;
       if (patch.targetAudience !== undefined)
@@ -138,6 +146,7 @@ export function ClientsProvider({ children }: { children: ReactNode }) {
       qc.invalidateQueries({ queryKey: QUERY_KEY });
     },
   });
+
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
