@@ -77,12 +77,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "סטודיו גרפיקה — יצירה חכמה" },
-      { name: "description", content: "כלי מינימליסטי ליצירת גרפיקות מותאמות ללקוחות שלך" },
-      { property: "og:title", content: "סטודיו גרפיקה — יצירה חכמה" },
-      { property: "og:description", content: "כלי מינימליסטי ליצירת גרפיקות מותאמות ללקוחות שלך" },
+      { title: "IBDIGITAL — Studio" },
+      { name: "description", content: "IBDIGITAL — יצירת גרפיקות מותאמות ללקוחות. Driven by data. Defined by results." },
+      { property: "og:title", content: "IBDIGITAL — Studio" },
+      { property: "og:description", content: "פלטפורמת יצירת גרפיקות מותאמת אישית ללקוחות שלך" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+
     ],
     links: [
       { rel: "stylesheet", href: appCss },

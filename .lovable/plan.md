@@ -1,76 +1,74 @@
 
 ## Goal
-Build a premium, minimalist, strictly RTL Hebrew single-page app in the existing TanStack Start template with an Apple-inspired aesthetic: light gray canvas (#F5F5F7), rounded-2xl cards, soft shadows, glassmorphism sidebar, and a polished loading animation.
+Evolve the existing RTL Hebrew app into the full IBDIGITAL suite: rebrand to navy/blue, add Auth and Clients screens, add a success state to the preview, and wire tab-based navigation from the sidebar. Frontend-only, mock data via React state.
 
-## Scope
-- Frontend only. No backend, no persistence (client state via `useState`).
-- Replace the placeholder home route (`src/routes/index.tsx`) with the new layout.
-- Update `__root.tsx` head metadata (title/description in Hebrew, `<html lang="he" dir="rtl">`).
-- Add Inter font via `<link>` in root head, register in `@theme` in `src/styles.css`.
-- Install `framer-motion` for transitions and the loading orb.
+## Branding
+- Navy `#0B192C` for primary, vibrant blue `#1E67FF` for accent/CTA.
+- Register in `src/styles.css` as tokens (`--brand-navy`, `--brand-blue`) plus map to `--primary`.
+- Logo: use the uploaded IBDIGITAL logo via `lovable-assets create` and render it in the sidebar header (replaces the current sparkles mark).
+- Keep the light `#F5F5F7` canvas, white panels, rounded-2xl, soft shadows.
 
-## Layout
-Full-screen `flex flex-row-reverse` on `bg-[#F5F5F7]`:
+## Navigation
+- Convert the current sidebar-with-local-state into tab navigation driven by a lifted `activeTab` state on the index route (`create | clients | auth`). No new routes — single-page tab switch, matches the request.
+- Tabs: `יצירת גרפיקה` (Sparkles), `לקוחות` (Users), `התחברות / הרשמה` (LogIn). Active tab uses navy background with white text.
+- Framer Motion `AnimatePresence` cross-fades between screens.
 
-```text
-[ Left: Preview/Loading (flex-1) ][ Middle: Form panel (~480px) ][ Right: Sidebar (~240px, glass) ]
-```
+## Screens
 
-Because the page is RTL (`dir="rtl"`), the sidebar naturally anchors right, form sits next to it, preview fills the remaining space on the left.
+### 1. Create (existing, refined)
+- Keep the two-panel layout (form + preview).
+- Restyle: primary button becomes navy `#0B192C` with subtle blue hover glow; slider fill and focus rings use the vibrant blue.
+- Preview panel gains a third state — **success** — showing a responsive grid of placeholder squares (count = slider value). Each tile is a rounded-2xl gradient card (subtle navy→blue) with a small caption "גרפיקה {n}". After generating, panel switches from loading → success. A small "צור שוב" button resets to idle.
+- The in-form "צור לקוח חדש" toggle stays as a lightweight inline flow, but is replaced by opening the shared `ClientDialog` (see below) to align with the Clients screen.
 
-### Right sidebar (`components/Sidebar.tsx`)
-- `bg-white/80 backdrop-blur-xl`, subtle left border, rounded-none full height.
-- Brand mark at top, nav items: "יצירת גרפיקה" (active), "לקוחות".
-- Active item: pill background `bg-black/5`, icon + label, hover states.
+### 2. Clients screen (`components/ClientsScreen.tsx`)
+- Header row: title "לקוחות", subtitle, and primary "+ הוסף לקוח חדש" button (navy).
+- Grid of client cards (`grid-cols-1 md:grid-cols-2 xl:grid-cols-3`, gap-4). Each card:
+  - Rounded-2xl white, soft shadow, hover lift.
+  - Avatar circle with brand color dot (from client `brandColors[0]`) + initials.
+  - Name, industry, target audience (muted), a row of brand color swatches.
+- Empty state when no clients: centered icon + "אין לקוחות עדיין" + CTA.
+- Seed with 3 mock clients.
 
-### Middle form panel (`components/CreateForm.tsx`)
-- White background, `border-l border-black/5`, generous padding, max-w ~ 480px.
-- Header: "יצירת גרפיקה" + short subtitle.
-- Two internal views toggled with `AnimatePresence`:
-  1. **Create graphic view** (default):
-     - Client dropdown ("בחר לקוח") — custom styled shadcn `Select` with rounded-xl trigger. Below it, a ghost text button "צור לקוח חדש +" that switches to the client-creation view.
-     - Textarea "טקסט על הגרפיקה (אופציונלי)" — rounded-2xl, soft border, focus ring `ring-black/10`.
-     - Textarea "בריף לגרפיקה (אופציונלי)" — same styling.
-     - Range slider "כמות גרפיקות" 1–10 with current value shown large next to the label. Custom Apple-style track: thin gray rail, white thumb with soft shadow, black fill on the active portion.
-     - Submit button "צור גרפיקות" — full-width, `bg-black text-white rounded-2xl`, hover `bg-black/90`, subtle scale on press.
-  2. **New client view**:
-     - Inputs for client name + notes, primary "שמור לקוח" and ghost "ביטול" back to the graphic form.
+### 3. Auth screen (`components/AuthScreen.tsx`)
+- Centered card on the canvas (`max-w-md`, rounded-3xl, subtle shadow, white).
+- IBDIGITAL logo at top, tagline "Driven by data. Defined by results.".
+- Tabs (segmented control) for `התחברות` / `הרשמה`.
+- Email + password inputs (rounded-2xl, focus ring blue). Primary button "התחבר" / "הירשם" navy with blue hover.
+- No backend — submit is a no-op with a toast/fake success.
 
-### Left preview panel (`components/PreviewPanel.tsx`)
-- Centered content, `AnimatePresence` between two states:
-  - **Idle**: soft muted illustration (simple concentric rounded squares or a faint gradient card), title "המסך שלך מחכה ליצירה", subtitle "מלא את הטופס והתחל".
-  - **Generating**: the Apple Intelligence orb + "יוצר קסמים…".
+## Shared: `ClientDialog` (`components/ClientDialog.tsx`)
+- Wraps shadcn `Dialog` with rounded-3xl content, RTL, Framer Motion scale/fade already on Radix.
+- Fields: שם, תחום, קהל יעד, צבעי מותג (chip input — comma-separated hex or a small palette picker with 6 preset swatches + custom hex).
+- Buttons: primary "שמור לקוח" (navy), ghost "ביטול".
+- On save: push into a shared `clients` state (lifted to the index route and passed via props or a lightweight React context `ClientsContext`).
 
-### Orb (`components/GeneratingOrb.tsx`)
-- 240px circle using a conic/radial gradient (violet → pink → blue → cyan).
-- Two stacked layers: outer glow (`blur-3xl opacity-60`) and inner orb.
-- Framer Motion: continuous `rotate` (linear 8s) + gentle `scale` pulse (2s ease-in-out), plus a slow hue drift via `filter: hue-rotate`.
-- Loading text below with staggered letter fade using Framer Motion.
+## State architecture
+- Lift `clients`, `selectedClientId`, and `activeTab` into `src/routes/index.tsx`.
+- Provide `ClientsContext` with `{ clients, addClient, selectedClientId, setSelectedClientId }` so both `CreateForm` and `ClientsScreen` share the same list without prop drilling.
+- Dialog open state also lives at the route level so both screens can open the same dialog.
+
+## Files
+- **New**
+  - `src/components/AuthScreen.tsx`
+  - `src/components/ClientsScreen.tsx`
+  - `src/components/ClientDialog.tsx`
+  - `src/components/SuccessGrid.tsx` (grid of placeholder squares for the preview)
+  - `src/context/ClientsContext.tsx`
+  - `src/assets/ibdigital-logo.png.asset.json` (via `lovable-assets create` from the upload)
+- **Modified**
+  - `src/routes/index.tsx` — tab state, providers, screen switching, wraps in `Toaster`.
+  - `src/routes/__root.tsx` — update title/description to "IBDIGITAL — Studio".
+  - `src/styles.css` — add brand tokens, remap `--primary` to navy.
+  - `src/components/Sidebar.tsx` — controlled tabs, IBDIGITAL logo, 3 items incl. Auth.
+  - `src/components/CreateForm.tsx` — replace inline new-client view with `ClientDialog`, read clients from context, restyle CTA to navy.
+  - `src/components/PreviewPanel.tsx` — accept `state: 'idle' | 'loading' | 'success'` and count; render `SuccessGrid` on success.
+  - `src/components/AppleSlider.tsx` — swap black fill for `--brand-navy`, thumb ring blue.
 
 ## Behavior
-- `useState` for: current view (`graphic | new-client`), form values, `isGenerating`.
-- Submit: set `isGenerating = true`, swap preview panel via `AnimatePresence`. After a `setTimeout` (~3.5s) return to idle (no real API).
-- All transitions use Framer Motion `initial/animate/exit` with soft `ease: [0.22, 1, 0.36, 1]`, duration 0.35–0.5s.
-
-## Styling / tokens
-- Add to `src/styles.css`:
-  - `--font-sans: "Inter", ui-sans-serif, system-ui, ...` in `@theme` (Hebrew falls back to system Hebrew UI font — good enough for premium minimal look; no extra Hebrew font requested).
-  - Ensure `bg-background` reads `#F5F5F7` by overriding `--background` in `:root`.
-- Add `<link rel="preconnect">` + Inter stylesheet in root head.
-- Set `<html lang="he" dir="rtl">` in `RootShell`.
-
-## Files to add / change
-- `src/routes/__root.tsx` — lang/dir, Inter link, updated head metadata.
-- `src/routes/index.tsx` — new page composing Sidebar + CreateForm + PreviewPanel.
-- `src/components/Sidebar.tsx`
-- `src/components/CreateForm.tsx`
-- `src/components/NewClientForm.tsx`
-- `src/components/PreviewPanel.tsx`
-- `src/components/GeneratingOrb.tsx`
-- `src/components/AppleSlider.tsx` (styled wrapper over shadcn `Slider`)
-- `src/styles.css` — token tweaks + Inter registration.
-- `package.json` — add `framer-motion` via `bun add framer-motion`.
+- Submit in `CreateForm` calls parent's `onGenerate(count)`; parent sets preview to `loading`, then after ~3.2s to `success` with N placeholders. "צור שוב" or editing form → back to `idle`.
+- Sidebar tab switch resets nothing; each screen keeps its own state during the session.
 
 ## Out of scope
-- No real client storage, no data persistence, no actual graphic generation — the "generate" flow is a visual simulation only.
-- No auth, no Lovable Cloud.
+- Real auth, real client persistence, real image generation.
+- Backend, Lovable Cloud, routing beyond the single index route.

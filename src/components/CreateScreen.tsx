@@ -1,0 +1,144 @@
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { Plus, Sparkles } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { AppleSlider } from "./AppleSlider";
+import { PreviewPanel, type PreviewState } from "./PreviewPanel";
+import { useClients } from "@/context/ClientsContext";
+
+const ease = [0.22, 1, 0.36, 1] as const;
+
+export function CreateScreen() {
+  const { clients, selectedClientId, setSelectedClientId, openClientDialog } = useClients();
+  const [text, setText] = useState("");
+  const [brief, setBrief] = useState("");
+  const [count, setCount] = useState(3);
+  const [preview, setPreview] = useState<PreviewState>("idle");
+
+  const handleGenerate = () => {
+    setPreview("loading");
+    setTimeout(() => setPreview("success"), 3200);
+  };
+
+  return (
+    <>
+      <div className="w-[440px] shrink-0 h-screen bg-white border-l border-black/5 overflow-y-auto">
+        <div className="p-10">
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.35, ease }}
+            className="flex flex-col gap-7"
+          >
+            <div>
+              <h1 className="text-2xl font-semibold text-[#0B192C] tracking-tight">
+                יצירת גרפיקה
+              </h1>
+              <p className="text-sm text-black/50 mt-1">
+                ספר לנו על הפרויקט ונדאג לשאר
+              </p>
+            </div>
+
+            {/* Client */}
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-[#0B192C]/80">
+                בחר לקוח
+              </label>
+              <Select
+                value={selectedClientId ?? undefined}
+                onValueChange={setSelectedClientId}
+                dir="rtl"
+              >
+                <SelectTrigger className="h-12 rounded-2xl bg-black/[0.03] border border-black/5 px-4 text-sm shadow-none focus:ring-4 focus:ring-[#1E67FF]/10 focus:border-[#1E67FF]/40 data-[state=open]:bg-white">
+                  <SelectValue placeholder="בחר לקוח מהרשימה" />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl border-black/5 shadow-lg">
+                  {clients.map((c) => (
+                    <SelectItem key={c.id} value={c.id} className="rounded-lg">
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <button
+                onClick={openClientDialog}
+                className="flex items-center gap-1 text-xs text-[#1E67FF] hover:text-[#0B192C] transition-colors self-start mt-1 font-medium"
+              >
+                <Plus className="w-3 h-3" />
+                צור לקוח חדש
+              </button>
+            </div>
+
+            {/* Text */}
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-[#0B192C]/80">
+                טקסט על הגרפיקה{" "}
+                <span className="text-black/40 font-normal">(אופציונלי)</span>
+              </label>
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="הטקסט שיופיע על העיצוב..."
+                rows={2}
+                className={taCls}
+              />
+            </div>
+
+            {/* Brief */}
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-[#0B192C]/80">
+                בריף לגרפיקה{" "}
+                <span className="text-black/40 font-normal">(אופציונלי)</span>
+              </label>
+              <textarea
+                value={brief}
+                onChange={(e) => setBrief(e.target.value)}
+                placeholder="תאר סגנון, צבעים, אווירה, קהל יעד..."
+                rows={4}
+                className={taCls}
+              />
+            </div>
+
+            {/* Slider */}
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-[#0B192C]/80">
+                  כמות גרפיקות
+                </label>
+                <div className="text-2xl font-semibold text-[#0B192C] tabular-nums tracking-tight">
+                  {count}
+                </div>
+              </div>
+              <AppleSlider value={count} onValueChange={setCount} min={1} max={10} />
+              <div className="flex justify-between text-[11px] text-black/40 tabular-nums">
+                <span>1</span>
+                <span>10</span>
+              </div>
+            </div>
+
+            {/* Submit */}
+            <button
+              onClick={handleGenerate}
+              disabled={preview === "loading"}
+              className="mt-2 h-14 rounded-2xl bg-[#0B192C] text-white text-sm font-medium hover:bg-[#0B192C]/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-[0_15px_35px_-12px_rgba(11,25,44,0.5)] hover:shadow-[0_15px_35px_-8px_rgba(30,103,255,0.4)] disabled:opacity-60"
+            >
+              <Sparkles className="w-4 h-4" />
+              {preview === "loading" ? "יוצר..." : "צור גרפיקות"}
+            </button>
+          </motion.div>
+        </div>
+      </div>
+
+      <PreviewPanel state={preview} count={count} onReset={() => setPreview("idle")} />
+    </>
+  );
+}
+
+const taCls =
+  "w-full px-4 py-3 rounded-2xl bg-black/[0.03] border border-black/5 text-sm text-[#0B192C] placeholder:text-black/30 focus:outline-none focus:bg-white focus:border-[#1E67FF]/40 focus:ring-4 focus:ring-[#1E67FF]/10 transition-all resize-none";
