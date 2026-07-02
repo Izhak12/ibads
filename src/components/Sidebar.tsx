@@ -1,20 +1,21 @@
-import { Sparkles, Users, LogIn } from "lucide-react";
+import { Sparkles, Users, LogOut } from "lucide-react";
 import logo from "@/assets/ibdigital-logo.jpg.asset.json";
 
-export type Tab = "create" | "clients" | "auth";
+export type Tab = "create" | "clients";
 
 const items: { id: Tab; label: string; icon: typeof Sparkles }[] = [
   { id: "create", label: "יצירת גרפיקה", icon: Sparkles },
   { id: "clients", label: "לקוחות", icon: Users },
-  { id: "auth", label: "התחברות / הרשמה", icon: LogIn },
 ];
 
 export function Sidebar({
   active,
   onChange,
+  onLogout,
 }: {
   active: Tab;
   onChange: (t: Tab) => void;
+  onLogout: () => void;
 }) {
   return (
     <aside className="w-64 shrink-0 h-screen bg-white/70 backdrop-blur-2xl border-l border-black/5 flex flex-col p-6">
@@ -47,8 +48,14 @@ export function Sidebar({
           );
         })}
       </nav>
-      <div className="mt-auto text-[11px] text-black/40 leading-relaxed">
-        © IBDIGITAL · Studio
+      <div className="mt-auto pt-4 border-t border-black/5">
+        <button
+          onClick={onLogout}
+          className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-black/50 hover:text-[#0B192C] hover:bg-black/5 transition-all"
+        >
+          <LogOut className="w-4 h-4" />
+          <span>התנתק</span>
+        </button>
       </div>
     </aside>
   );
