@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Check, Loader2, Sparkles, X } from "lucide-react";
+import { Check, Loader2, Sparkles, Trash2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -10,6 +10,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useClients } from "@/context/ClientsContext";
+import { useClientAssets, type ClientAsset } from "@/hooks/useClientAssets";
+
 
 const presetColors = [
   "#0B192C",
@@ -259,7 +261,13 @@ export function ClientDialog({
               </Field>
             </Section>
 
+            {/* Business assets */}
+            <Section title="נכסים דיגיטליים (תמונות העסק)">
+              <AssetsUploader clientId={editingClientId} />
+            </Section>
+
             {/* AI Brief */}
+
             <Section title="אפיון קריאייטיבי חכם">
               <button
                 onClick={handleGenerateBrief}
@@ -406,3 +414,135 @@ function Section({
     </div>
   );
 }
+
+const MAX_FILE_MB = 10;
+const ACCEPT = ["image/jpeg", "image/png", "image/webp"];
+
+function AssetsUploader({ clientId }: { clientId: string | null }) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const { assets, isLoading, uploading, uploadFiles, deleteAsset } =
+    useClientAssets(clientId);
+  const [dragOver, setDragOver] = useState(false);
+
+  if (!clientId) {
+    return (
+      <div className="rounded-2xl border border-dashed border-black/10 bg-black/[0.02] p-5 text-center text-xs text-black/50">
+        שמור את הלקוח תחילה כדי להעלות תמונות עסק.
+      </div>
+    );
+  }
+
+  const handleFiles = async (files: File[]) => {
+    const valid: File[] = [];
+    for (const f of files) {
+      if (!ACCEPT.includes(f.type)) {
+        toast.error(`${f.name}: פורמט לא נתמך`);
+        continue;
+      }
+      if (f.size > MAX_FILE_MB * 1024 * 1024) {
+        toast.error(`${f.name}: הקובץ גדול מ-${MAX_FILE_MB}MB`);
+        continue;
+      }
+      valid.push(f);
+    }
+    if (valid.length === 0) return;
+    try {
+      await uploadFiles(valid);
+      toast.success(`${valid.length} תמונות הועלו`);
+    } catch (err) {
+      toast.error("שגיאה בהעלאה", {
+        description: err instanceof Error ? err.message : undefined,
+      });
+    }
+  };
+
+  const handleDelete = async (a: ClientAsset) => {
+    try {
+      await deleteAsset(a);
+    } catch (err) {
+      toast.error("שגיאה במחיקה", {
+        description: err instanceof Error ? err.message : undefined,
+      });
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+          const files = Array.from(e.dataTransfer.files);
+          if (files.length) handleFiles(files);
+        }}
+        onClick={() => inputRef.current?.click()}
+        className={`rounded-2xl border-2 border-dashed p-6 text-center cursor-pointer transition-all ${
+          dragOver
+            ? "border-[#1E67FF] bg-[#1E67FF]/5"
+            : "border-black/10 bg-black/[0.02] hover:bg-black/[0.04]"
+        }`}
+      >
+        <input
+          ref={inputRef}
+          type="file"
+          accept={ACCEPT.join(",")}
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            const files = Array.from(e.target.files ?? []);
+            if (files.length) handleFiles(files);
+            e.currentTarget.value = "";
+          }}
+        />
+        <div className="flex flex-col items-center gap-2">
+          <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center">
+            {uploading ? (
+              <Loader2 className="w-4 h-4 animate-spin text-[#1E67FF]" />
+            ) : (
+              <Upload className="w-4 h-4 text-[#1E67FF]" />
+            )}
+          </div>
+          <div className="text-sm font-medium text-[#0B192C]">
+            {uploading ? "מעלה תמונות..." : "גרור לכאן תמונות או לחץ להעלאה"}
+          </div>
+          <div className="text-[11px] text-black/40">
+            JPG / PNG / WebP · עד {MAX_FILE_MB}MB לתמונה
+          </div>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="text-xs text-black/40 text-center py-2">טוען תמונות...</div>
+      ) : assets.length > 0 ? (
+        <div className="grid grid-cols-4 gap-2">
+          {assets.map((a) => (
+            <div
+              key={a.id}
+              className="relative aspect-square rounded-xl overflow-hidden bg-black/5 group border border-black/5"
+            >
+              <img src={a.url} alt="" className="w-full h-full object-cover" />
+              <button
+                type="button"
+                onClick={() => handleDelete(a)}
+                className="absolute top-1.5 left-1.5 w-7 h-7 rounded-full bg-white/95 text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                aria-label="מחק"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-[11px] text-black/40 text-center py-2">
+          עדיין לא הועלו תמונות
+        </div>
+      )}
+    </div>
+  );
+}
+

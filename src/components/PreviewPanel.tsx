@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ImageIcon } from "lucide-react";
 import { GeneratingOrb } from "./GeneratingOrb";
 import { SuccessGrid } from "./SuccessGrid";
+import type { GraphicItem } from "./GraphicCard";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -9,11 +10,15 @@ export type PreviewState = "idle" | "loading" | "success";
 
 export function PreviewPanel({
   state,
-  images,
+  items,
+  accentColor,
+  fileNameBase,
   onReset,
 }: {
   state: PreviewState;
-  images: string[];
+  items: GraphicItem[];
+  accentColor?: string;
+  fileNameBase?: string;
   onReset: () => void;
 }) {
   return (
@@ -41,7 +46,12 @@ export function PreviewPanel({
               transition={{ duration: 0.4, ease }}
               className="absolute inset-0"
             >
-              <SuccessGrid images={images} onReset={onReset} />
+              <SuccessGrid
+                items={items}
+                accentColor={accentColor}
+                fileNameBase={fileNameBase}
+                onReset={onReset}
+              />
             </motion.div>
           )}
           {state === "idle" && (

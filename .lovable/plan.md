@@ -1,45 +1,54 @@
+## המטרה
+נעבור מיצירת תמונות עם DALL-E (שמייצר טקסט עברי שבור) למחולל HTML/CSS אמיתי: תמונות אמיתיות של העסק כרקע + טקסט עברי שנוצר ב-AI מעל, עם ייצוא PNG להורדה.
 
-## Plan: Client Management + AI Smart Brief
+## 1. אחסון תמונות של לקוח
 
-Note: Cloud is already enabled, so Gemini is available via the Lovable AI Gateway using the auto-provisioned `LOVABLE_API_KEY` — no need to prompt for `GEMINI_API_KEY`. This is a TanStack Start app, so the backend uses a server route (not a Supabase Edge Function).
+**מסד נתונים:**
+- Storage bucket ציבורי חדש: `client-assets`
+- טבלה חדשה `client_assets` (client_id, user_id, storage_path, public_url) עם RLS לפי `auth.uid()`
+- מדיניות Storage: כל משתמש מחובר יכול להעלות/למחוק תחת התיקייה שלו `{user_id}/...`, הקריאה ציבורית
 
-### 1. Extend Client model & context
-`src/context/ClientsContext.tsx`
-- Add fields: `targetAudience`, `brandVibe`, `coreOffers`, `brief`.
-- Add `updateClient(id, patch)` and `deleteClient(id)`.
-- Add `openClientDialogFor(client)` to open in edit mode with prefilled data.
+## 2. מודל העלאה במודאל הלקוח
 
-### 2. Client cards — hover actions + delete confirm
-`src/components/ClientsScreen.tsx`
-- Add subtle hover lift (shadow + translate) on each card.
-- Top-left corner (RTL): two ghost icon buttons (Pencil, Trash2) that fade in on hover, in soft rounded backdrop.
-- Edit → `openClientDialogFor(client)`.
-- Delete → shadcn `AlertDialog` with minimal Apple-styled copy ("האם למחוק את הלקוח?"), destructive confirm.
+בתוך `ClientDialog` נוסיף Section חדש **"נכסים דיגיטליים (תמונות העסק)"**:
+- כפתור העלאה שמקבל תמונות מרובות (drag & drop + בחירה)
+- ולידציה: JPG/PNG/WebP, עד 10MB לקובץ
+- העלאה מיידית ל-Storage עם progress
+- רשת תמונות ממוזערות (3-4 בשורה) עם כפתור מחיקה בכל אחת
+- התמונות נשמרות ומקושרות ללקוח גם בשלב עריכה וגם בשלב יצירה חדשה
 
-### 3. AI Smart-Brief server route
-`src/routes/api/generate-brief.ts`
-- POST endpoint, Zod-validated body (all questionnaire fields).
-- Calls Lovable AI Gateway `google/gemini-2.5-pro` with a Hebrew system prompt: "senior marketing strategist… produce a comprehensive, DALL-E/GPT-ready creative brief covering visual direction, tone, color mood, typography feel, composition ideas, do's/don'ts."
-- Returns `{ brief: string }`. Handles 402/429 with clear errors.
+## 3. שינוי לוגיקת היצירה
 
-### 4. Redesigned Client Dialog (questionnaire + AI)
-`src/components/ClientDialog.tsx` — full redesign
-- Wider modal (`max-w-2xl`), spacious padding, RTL.
-- Fields: Business Name, Industry/Niche, Target Audience (textarea: age/interests/pain points), Brand Vibe / Tone (textarea), Core Products/Offers (textarea), Brand Colors (existing swatch picker).
-- Distinct gradient "✨ צור אפיון חכם" button (navy → vibrant blue, subtle glow).
-- On click: POST to `/api/generate-brief`, show `BriefLoadingOverlay` — Apple-Intelligence style: animated conic-gradient border sweeping around modal content, soft pulsing "מנתח את המותג…" text, shimmer.
-- Result renders in a large editable `Textarea` (min-h ~ 240px) labeled "האפיון החכם — ניתן לערוך".
-- Primary button becomes "שמור לקוח" — saves via `addClient` or `updateClient`.
-- Works in both create and edit modes (prefill on edit; user can re-run brief).
+**Backend (`/api/generate-graphics`):**
+- מבטלים לחלוטין את הקריאה ל-image generation
+- קוראים ל-Lovable AI Gateway (Gemini) עם prompt שמחזיר JSON מובנה: `{ headline, subheadline, cta }` בעברית, לפי הבריף/תעשייה/טון של הלקוח
+- מייצרים `amount` וריאציות טקסט שונות בקריאה אחת
+- מחזירים ללקוח: מערך של `{ headline, subheadline, cta, backgroundUrl }` כשה-backgroundUrl נבחר רנדומלית מגלריית הלקוח
 
-### 5. Feed brief into image generation
-`src/routes/api/generate-graphics.ts`
-- Include `brandVibe` and full `brief` from the selected client in the DALL-E 3 prompt so generated graphics respect the strategist output.
+**Frontend (`PreviewPanel` / כרטיס גרפיקה):**
+- כל כרטיס הוא DOM אמיתי בפורמט מרובע 1080x1080:
+  - `<img>` של התמונה האמיתית ברקע (`object-fit: cover`)
+  - Gradient overlay כהה מלמטה למעלה (`rgba(0,0,0,0.85) → transparent`)
+  - טקסט עברי מעל: Headline גדול, Subheadline, CTA כ-pill button
+  - כיוון RTL, טיפוגרפיה יוקרתית (Heebo/Assistant weight 700+)
+  - צבעי המותג של הלקוח משמשים ל-CTA ולהדגשות
+- אם אין תמונות בגלריית הלקוח → מציגים הודעה מנומסת שמפנה להעלות תמונות במודאל הלקוח
 
-`src/components/CreateScreen.tsx`
-- Pass `brandVibe` and `brief` in the request payload.
+## 4. ייצוא PNG
 
-### Technical notes
-- No new npm deps; reuse existing shadcn `AlertDialog`, `Dialog`, `Textarea`, `Button`, Framer Motion.
-- Strict RTL preserved (`dir="rtl"`, right-aligned labels).
-- Colors stay in existing IBDIGITAL tokens (navy `#0B192C` + vibrant blue accent) — no hardcoded hex in new components except within the AI gradient button, which uses existing CSS vars.
+- מתקינים `html-to-image` (עדיף על `html2canvas` — טיפול טוב יותר בפונטים, RTL, ותמונות cross-origin)
+- על כל כרטיס כפתור הורדה עדין בפינה
+- לחיצה → מייצא את ה-DOM ל-PNG באיכות גבוהה (1080x1080, pixelRatio=2) → הורדה מיידית עם שם קובץ מבוסס שם הלקוח + תאריך
+- Toast הצלחה/כישלון
+
+## 5. פרטים טכניים
+
+- **Supabase Storage CORS**: bucket ציבורי → תמונות טעונות ישירות ב-`<img>` ללא בעיות tainting לצורך export
+- **Preload fonts**: לפני export נוודא שהפונטים העבריים טעונים (font.loaded ready) אחרת ה-PNG יצא עם fallback
+- **UI compositor component** חדש: `src/components/GraphicCard.tsx` — כרטיס יחיד עם ref שמשמש גם לתצוגה וגם ל-export
+- **מבנה תשובה שרת**: JSON מובנה מ-Gemini עם `response_format` / הוראות מחמירות + ולידציה עם Zod
+- **הסרת קוד ישן**: `OPENAI_API_KEY` יוצא משימוש בקוד; ניתן להשאיר את ה-secret למקרה שיוחלט לחזור בעתיד
+
+## מה יישאר להחלטה עתידית (לא כלול כרגע)
+- Templates מרובים של layout (כותרת למעלה/למטה/מרכז) — כרגע layout אחד יוקרתי אחיד
+- Logo של המותג בפינה — נוסיף רק אם תרצה, כרגע אין העלאת לוגו נפרדת (אפשר להשתמש באחת מתמונות הגלריה)
