@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Check, Loader2, Sparkles, X } from "lucide-react";
+import { Check, Loader2, Sparkles, Trash2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -10,6 +10,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useClients } from "@/context/ClientsContext";
+import { useClientAssets, type ClientAsset } from "@/hooks/useClientAssets";
+
 
 const presetColors = [
   "#0B192C",
