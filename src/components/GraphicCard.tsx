@@ -1,6 +1,6 @@
 import { forwardRef, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Download, Loader2 } from "lucide-react";
+import { ArrowLeft, Diamond, Download, Loader2 } from "lucide-react";
 import { toPng } from "html-to-image";
 import { toast } from "sonner";
 
@@ -9,6 +9,7 @@ export type GraphicItem = {
   subheadline: string;
   cta: string;
   backgroundUrl: string;
+  photos?: string[];
 };
 
 type Props = {
