@@ -261,7 +261,13 @@ export function ClientDialog({
               </Field>
             </Section>
 
+            {/* Business assets */}
+            <Section title="נכסים דיגיטליים (תמונות העסק)">
+              <AssetsUploader clientId={editingClientId} />
+            </Section>
+
             {/* AI Brief */}
+
             <Section title="אפיון קריאייטיבי חכם">
               <button
                 onClick={handleGenerateBrief}
