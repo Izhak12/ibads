@@ -1,60 +1,63 @@
-# Overhaul graphic templates → 3 "designed" styles
+# Backend + Canvas Template Overhaul
 
-## Data changes
+## 1. Backend (`src/routes/api/generate-graphics.ts`)
 
-`GraphicItem` (in `src/components/GraphicCard.tsx`) gains a `photos: string[]` field alongside the existing `backgroundUrl` (kept for back-compat). `CreateScreen.tsx` composes each item with:
+Current state already satisfies the request — verify and leave logic intact:
 
-```ts
-photos: shuffle(assets).slice(0, Math.min(3, assets.length)).map(a => a.url)
-backgroundUrl: photos[0]
-```
+- `model: "gpt-4o"` ✓
+- `temperature: 0.7` ✓
+- `response_format: { type: "json_object" }` ✓
+- Strict Hebrew system prompt with headline/subheadline/cta contract ✓
+- `safeParseItems` tolerates both `{items:[...]}` and bare `[...]`, pads missing items ✓
 
-Deterministic per item using `index` as seed so preview matches download and regenerations stay stable.
+Only change: tighten the user message so the JSON shape matches the schema line in the system prompt (system prompt shows a bare array, request asks for `{items:[]}` — align both on `{items:[...]}` to prevent occasional shape drift). No functional refactor beyond that.
 
-## Fonts
+No changes to Auth, Clients context, `useClientAssets`, or DB fetching — this route is standalone and the request/response contract already used by `CreateScreen.tsx` stays identical.
 
-Add `@fontsource/rubik` (400/700/900) via `bun add` and `@import` in `src/styles.css` next to the existing Heebo imports. Rubik used for the rugged "Chalkboard" headline; Heebo stays for the other two.
+## 2. Frontend Canvas (`src/components/GraphicCard.tsx`)
 
-## Templates
+Rewrite the three templates with strict containment so nothing overflows the 1080×1080 canvas and the CTA can never be clipped.
 
-Rewrite `GraphicCard.tsx` to cycle three richer templates by `index % 3`. All render at 1080×1080, RTL, absolute positioning, layered z-index — no more flat "web div" strips.
+### Shared container rules
+- Outer wrapper keeps `aspect-ratio: 1 / 1`, `overflow: hidden`, and the existing scaled 1080px canvas — unchanged.
+- Every template root uses `position: absolute; inset: 0; overflow: hidden; box-sizing: border-box` and an inner **safe area** with `padding: 64px` (≈40px scaled), `display: flex`, `flex-direction: column` so text blocks flow instead of using magic `top/bottom` offsets that clip.
+- Every text node: `min-width: 0`, `max-width: 100%`, `overflow-wrap: anywhere`, `word-break: break-word`. CTA uses `flex-shrink: 0` and its own row wrapper with `margin-top: auto` so it is always anchored above the bottom padding, never inside a fixed-height parent that can crop it.
+- Headline uses `clamp`-style sizing via a helper that picks font-size from headline length (e.g. ≤18 chars → 104px, ≤32 → 84px, else 64px) so long Hebrew strings don't overflow.
+- Fonts: Heebo + Rubik already imported via `@fontsource` in `src/styles.css` — no new imports.
 
-### 1. Chalkboard Market
-- Full canvas dark chalkboard: `#141414` base with a subtle radial-gradient vignette + repeating conic/linear noise gradient (pure CSS, no image asset) to fake chalk texture.
-- 2–3 photos rendered as polaroids, absolutely positioned, overlapping in the upper 60%: `border: 14px solid #f5efe4`, `padding-bottom` for polaroid chin, `box-shadow: 0 30px 60px -10px rgba(0,0,0,0.7)`, rotations `-6deg`, `4deg`, `-2deg`. Falls back to 1 or 2 polaroids if fewer photos exist.
-- Headline in Rubik 900, large, tight leading, with the gold gradient (`linear-gradient(135deg,#f6d365 0%,#fda085 100%)`) via `background-clip: text`. Fallback `color: #fda085` so PNG export renders even if `html-to-image` drops `-webkit-text-fill-color`.
-- Subheadline in white, weight 400, muted opacity.
-- CTA styled like a chalk stamp: warm cream background (`#f5efe4`), dark ink text, hand-stamped shadow, slight rotation `-1.5deg`, sharp 6px radius.
-- Text block anchored bottom-right with generous padding (96px).
+### Template A — Split Layout (replaces "Luxury Premium")
+- Two vertical regions inside a single flex column: top 55% hero photo (`object-fit: cover`), bottom 45% solid block (`#0F1F38` navy or cream depending on palette rotation).
+- Text block is a flex column with `justify-content: center`, `gap: 20px`, right-aligned RTL. No fixed heights on text — `flex: 1` region grows, CTA sits at natural end.
+- CTA: gold `#D4AF7A` pill, `border-radius: 4px`, `padding: 18px 44px`, `align-self: flex-end`.
+- Thin gold hairline divider under headline (140×1px).
 
-### 2. Luxury Premium
-- Background: deep emerald→black vertical gradient (`linear-gradient(180deg,#0a1f18 0%,#050505 100%)`).
-- Top 60% is the hero photo (`object-fit: cover`) with an overlay `linear-gradient(180deg, rgba(0,0,0,0) 45%, rgba(5,5,5,0.9) 85%, #050505 100%)` that seamlessly fades into the solid bottom.
-- Above headline: a small lucide `Diamond` icon (48px, gold `#D4AF7A`), centered right.
-- Headline: Heebo 800, gold (`#D4AF7A`), letter-spacing `-0.02em`, ~92px.
-- Thin gold hairline divider under the headline: `height: 1px; width: 140px; background: #D4AF7A; opacity: 0.7;` aligned to the text edge.
-- Subheadline in pure white, weight 400, ~30px.
-- CTA: outlined pill, gold border + gold text, hover-less flat luxury look, sharp 2px radius.
-- All bottom content sits inside the dark 40% with 96px padding, right-aligned.
+### Template B — Polaroid Collage (replaces "Chalkboard Market")
+- Dark chalkboard background retained, but polaroids are absolutely positioned **inside a bounded 1080×620 upper stage** (`position: absolute; top: 0; left: 0; right: 0; height: 620px; overflow: hidden`) so rotated polaroids can never bleed past the canvas edge.
+- Up to 3 polaroids with clamped sizes (`min(360px, 34%)`) and rotations `-6°`, `4°`, `-2°`; `will-change: transform` to keep shadows crisp in `html-to-image`.
+- Bottom 460px is a solid text region with 64px padding, flex-column, `justify-content: flex-end`, `gap: 20px`. Headline uses gold gradient with fallback `color`.
+- CTA cream stamp, `flex-shrink: 0`, `align-self: flex-end`, rotated `-1.5°`.
 
-### 3. Dynamic Collage
-- Warm off-white base (`#F2ECE1`) with a coloured diagonal accent band behind everything (`linear-gradient(135deg, transparent 55%, #E86A4E 55%)`).
-- Large photo top-right, ~62% width × 58% height, rounded-organic `border-radius: 40% 60% 55% 45% / 50% 45% 55% 50%` and heavy shadow.
-- Smaller secondary photo bottom-left, ~40% × 38%, square with 24px radius, tilted `-4deg`, shadow.
-- Text stacked centre-left (right-aligned RTL) between the two photos.
-- Headline: Heebo 900, dark navy `#0F1F38`, ~72px, tight.
-- Subheadline: Heebo 500, `#4A5A73`, ~28px.
-- CTA: "Stamp badge" — dark navy pill with white text, lucide `ArrowLeft` icon (RTL direction of travel), rotated `-3deg`, thick shadow, `border-radius: 999px`, `padding: 20px 40px`.
-- Small circular "SALE-style" sticker top-left: solid `#E86A4E` disc, 140px, white bold Rubik micro-label (e.g. הזמינו עכשיו) rotated `-8deg` — only rendered when `item.cta` is short.
+### Template C — Premium Centered Card (replaces "Dynamic Collage")
+- Warm base (`#F2ECE1`) with a full-bleed hero photo behind a centered translucent card.
+- Card: `width: 78%; max-width: 820px; margin: auto; padding: 56px 48px; background: rgba(255,249,240,0.96); border-radius: 24px; box-shadow: 0 40px 80px -20px rgba(15,31,56,0.35)`.
+- Card is a flex column, right-aligned RTL, `gap: 22px`. No absolute positioning inside — text and CTA flow naturally so nothing clips regardless of copy length.
+- Small navy accent bar (`4px × 48px`) above headline instead of the previous sticker/badge chaos.
+- CTA: navy pill with `ArrowLeft` icon, `border-radius: 999px`, `padding: 18px 36px`, `align-self: flex-end`, no rotation (prevents shadow-clip inside the card).
+- Removes: diagonal accent band, organic blob photo, tilted secondary photo, rotated "חדש" sticker — these were the main sources of the boxy/overflow feel.
 
-## Shared rules
-- Every text node explicitly sets `fontFamily`, `direction: "rtl"`, `textAlign: "right"` (Collage & Chalkboard) — Luxury Premium centers headline block to hug the divider line.
-- No `position: static` for photo/text layers — absolute or layered flex only, so nothing reads as "web div".
-- Heavy `box-shadow` on every photo layer (`0 30px 60px -15px rgba(0,0,0,0.55)` or stronger).
-- Existing 1080×1080 scaled canvas, `html-to-image` export, and download button stay unchanged. `document.fonts.ready` await already covers the new Rubik weights.
-- `pickTemplate` continues to be deterministic by `index % 3`; `accentColor` prop kept in signature but unused.
+### Palette rotation
+Keep `pickTemplate(index) = index % 3`. Add a parallel `pickPalette(index)` returning navy/cream/sage for Template A and C so consecutive graphics don't repeat the same colorway.
 
-## Non-goals
-- No backend / API prompt changes.
-- No new bucket, RLS, or schema changes.
-- No new dependencies beyond `@fontsource/rubik`.
+### Export fidelity
+- `html-to-image` config unchanged (1080×1080, `pixelRatio: 1`).
+- Continue awaiting `document.fonts.ready` before capture.
+- Every `<img>` keeps `crossOrigin="anonymous"` and `display: block`.
+
+## 3. Non-goals / regression guard
+- No changes to `CreateScreen.tsx` data flow, `GraphicItem` type, `useClientAssets`, `ClientsContext`, `AuthScreen`, or any Supabase code.
+- No new dependencies.
+- No changes to `PreviewPanel`, `SuccessGrid`, or the download button UX.
+
+## Files touched
+1. `src/routes/api/generate-graphics.ts` — align user-message JSON shape hint with system prompt (one-line change).
+2. `src/components/GraphicCard.tsx` — full rewrite of the three template components plus a shared `SafeCanvas` wrapper and headline-size helper. `GraphicCard` shell, scaling logic, and download handler stay as-is.
