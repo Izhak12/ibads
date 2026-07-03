@@ -117,23 +117,23 @@ export const GraphicCard = forwardRef<HTMLDivElement, Props>(function GraphicCar
 type TemplateId = "horizontal" | "vertical" | "framed";
 type Palette = { bg: string; fg: string; muted: string; cta: string; ctaFg: string };
 
-function pickTemplate(index: number, accentColor: string): { template: TemplateId; palette: Palette } {
+function pickTemplate(index: number, _accentColor: string): { template: TemplateId; palette: Palette } {
   const templates: TemplateId[] = ["horizontal", "vertical", "framed"];
   const template = templates[index % templates.length];
 
   const palettes: Palette[] = [
-    // Cream — dark text
-    { bg: "#F3ECE0", fg: "#0B192C", muted: "#3A4A63", cta: "#0B192C", ctaFg: "#F3ECE0" },
-    // Dark navy — light text
-    { bg: "#0B192C", fg: "#F5EFE6", muted: "#B8C2D1", cta: accentColor, ctaFg: "#FFFFFF" },
-    // Brand accent — light text
-    { bg: accentColor, fg: "#FFFFFF", muted: "rgba(255,255,255,0.85)", cta: "#0B192C", ctaFg: "#FFFFFF" },
+    // Deep Navy — light text, sand/gold CTA
+    { bg: "#0F1F38", fg: "#F9F6F0", muted: "#B8C2D1", cta: "#D9C48E", ctaFg: "#0F1F38" },
+    // Soft Cream — dark text, navy CTA
+    { bg: "#F9F6F0", fg: "#0F1F38", muted: "#4A5A73", cta: "#0F1F38", ctaFg: "#F9F6F0" },
+    // Sage Green — light text, navy CTA
+    { bg: "#8DA399", fg: "#F9F6F0", muted: "#EDEDE0", cta: "#0F1F38", ctaFg: "#F9F6F0" },
   ];
   const palette = palettes[index % palettes.length];
   return { template, palette };
 }
 
-const FONT_FAMILY = '"Heebo", "Inter", system-ui, sans-serif';
+const FONT_FAMILY = '"Heebo", system-ui, sans-serif';
 
 const GraphicCanvas = forwardRef<
   HTMLDivElement,
@@ -154,15 +154,9 @@ const GraphicCanvas = forwardRef<
         fontFamily: FONT_FAMILY,
       }}
     >
-      {template === "horizontal" && (
-        <HorizontalSplit item={item} palette={palette} />
-      )}
-      {template === "vertical" && (
-        <VerticalSplit item={item} palette={palette} />
-      )}
-      {template === "framed" && (
-        <FramedCard item={item} palette={palette} />
-      )}
+      {template === "horizontal" && <HorizontalSplit item={item} palette={palette} />}
+      {template === "vertical" && <VerticalSplit item={item} palette={palette} />}
+      {template === "framed" && <FramedCard item={item} palette={palette} />}
     </div>
   );
 });
@@ -170,45 +164,41 @@ const GraphicCanvas = forwardRef<
 function TextBlock({
   item,
   palette,
-  align = "flex-start",
-  textAlign = "right",
   headlineSize = 84,
-  subheadlineSize = 32,
-  ctaSize = 28,
-  gap = 22,
+  subheadlineSize = 30,
+  ctaSize = 26,
 }: {
   item: GraphicItem;
   palette: Palette;
-  align?: "flex-start" | "center" | "flex-end";
-  textAlign?: "right" | "center" | "left";
   headlineSize?: number;
   subheadlineSize?: number;
   ctaSize?: number;
-  gap?: number;
 }) {
   return (
     <div
       style={{
         display: "flex",
         flexDirection: "column",
-        gap,
-        alignItems: align,
-        textAlign,
+        gap: 28,
+        alignItems: "flex-end",
+        textAlign: "right",
         direction: "rtl",
         width: "100%",
         color: palette.fg,
+        fontFamily: FONT_FAMILY,
       }}
     >
       <div
         style={{
           fontSize: headlineSize,
           fontWeight: 800,
-          lineHeight: 1.08,
+          lineHeight: 1.1,
           letterSpacing: "-0.02em",
           width: "100%",
           wordBreak: "break-word",
           overflowWrap: "break-word",
           color: palette.fg,
+          fontFamily: FONT_FAMILY,
         }}
       >
         {item.headline}
@@ -217,12 +207,13 @@ function TextBlock({
         <div
           style={{
             fontSize: subheadlineSize,
-            fontWeight: 500,
+            fontWeight: 400,
             lineHeight: 1.4,
             width: "100%",
             wordBreak: "break-word",
             overflowWrap: "break-word",
             color: palette.muted,
+            fontFamily: FONT_FAMILY,
           }}
         >
           {item.subheadline}
@@ -231,20 +222,21 @@ function TextBlock({
       {item.cta && (
         <div
           style={{
-            marginTop: 12,
-            padding: "20px 42px",
-            borderRadius: 999,
+            marginTop: 20,
+            padding: "18px 40px",
+            borderRadius: 4,
             background: palette.cta,
             color: palette.ctaFg,
             fontSize: ctaSize,
             fontWeight: 700,
             letterSpacing: "-0.01em",
-            boxShadow: "0 10px 28px rgba(11,25,44,0.18)",
+            boxShadow: "0 6px 20px rgba(15,31,56,0.18)",
             maxWidth: "100%",
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
-            alignSelf: align,
+            alignSelf: "flex-end",
+            fontFamily: FONT_FAMILY,
           }}
         >
           {item.cta}
@@ -256,7 +248,7 @@ function TextBlock({
 
 function Photo({ url, style }: { url: string; style: React.CSSProperties }) {
   if (!url) {
-    return <div style={{ ...style, background: "#0B192C" }} />;
+    return <div style={{ ...style, background: "#0F1F38" }} />;
   }
   return (
     <img
@@ -272,67 +264,48 @@ function Photo({ url, style }: { url: string; style: React.CSSProperties }) {
 function HorizontalSplit({ item, palette }: { item: GraphicItem; palette: Palette }) {
   return (
     <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}>
-      <Photo
-        url={item.backgroundUrl}
-        style={{ width: "100%", height: "55%", display: "block" }}
-      />
+      <Photo url={item.backgroundUrl} style={{ width: "100%", height: "55%", display: "block" }} />
       <div
         style={{
           width: "100%",
           height: "45%",
           background: palette.bg,
-          padding: "56px 72px 64px",
+          padding: "80px 88px 88px",
           display: "flex",
           alignItems: "center",
-          justifyContent: "flex-start",
           boxSizing: "border-box",
         }}
       >
-        <TextBlock
-          item={item}
-          palette={palette}
-          headlineSize={78}
-          subheadlineSize={30}
-          ctaSize={28}
-        />
+        <TextBlock item={item} palette={palette} headlineSize={84} subheadlineSize={30} ctaSize={28} />
       </div>
     </div>
   );
 }
 
-// Template B: photo right 50%, solid color left 50% (RTL: photo starts side)
+// Template B: photo right 50%, solid color left 50% (RTL)
 function VerticalSplit({ item, palette }: { item: GraphicItem; palette: Palette }) {
   return (
     <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "row" }}>
-      {/* Left solid text block (visually left = end in RTL flex row) */}
       <div
         style={{
           width: "50%",
           height: "100%",
           background: palette.bg,
-          padding: "72px 64px",
+          padding: "88px",
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
           boxSizing: "border-box",
         }}
       >
-        <TextBlock
-          item={item}
-          palette={palette}
-          headlineSize={68}
-          subheadlineSize={26}
-          ctaSize={24}
-          gap={20}
-        />
+        <TextBlock item={item} palette={palette} headlineSize={72} subheadlineSize={26} ctaSize={24} />
       </div>
-      {/* Right photo */}
       <Photo url={item.backgroundUrl} style={{ width: "50%", height: "100%" }} />
     </div>
   );
 }
 
-// Template C: solid background, photo card centered top with rounded corners + shadow
+// Template C: solid bg, framed photo top, text below (right-aligned)
 function FramedCard({ item, palette }: { item: GraphicItem; palette: Palette }) {
   return (
     <div
@@ -340,10 +313,9 @@ function FramedCard({ item, palette }: { item: GraphicItem; palette: Palette }) 
         position: "absolute",
         inset: 0,
         background: palette.bg,
-        padding: "72px 72px 64px",
+        padding: "96px",
         display: "flex",
         flexDirection: "column",
-        alignItems: "center",
         boxSizing: "border-box",
       }}
     >
@@ -351,9 +323,9 @@ function FramedCard({ item, palette }: { item: GraphicItem; palette: Palette }) 
         style={{
           width: "100%",
           height: "52%",
-          borderRadius: 36,
+          borderRadius: 32,
           overflow: "hidden",
-          boxShadow: "0 30px 60px -20px rgba(0,0,0,0.35), 0 10px 20px -10px rgba(0,0,0,0.2)",
+          boxShadow: "0 30px 60px -20px rgba(15,31,56,0.35), 0 10px 20px -10px rgba(15,31,56,0.2)",
           flexShrink: 0,
         }}
       >
@@ -366,19 +338,10 @@ function FramedCard({ item, palette }: { item: GraphicItem; palette: Palette }) 
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
-          alignItems: "center",
-          paddingTop: 40,
+          paddingTop: 48,
         }}
       >
-        <TextBlock
-          item={item}
-          palette={palette}
-          align="center"
-          textAlign="center"
-          headlineSize={70}
-          subheadlineSize={28}
-          ctaSize={26}
-        />
+        <TextBlock item={item} palette={palette} headlineSize={76} subheadlineSize={28} ctaSize={26} />
       </div>
     </div>
   );
