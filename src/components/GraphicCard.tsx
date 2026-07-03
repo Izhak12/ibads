@@ -154,13 +154,13 @@ const GraphicCanvas = forwardRef<
         />
       )}
 
-      {/* Dark gradient overlay bottom → top */}
+      {/* Dark gradient overlay bottom → top (stronger for text contrast) */}
       <div
         style={{
           position: "absolute",
           inset: 0,
           background:
-            "linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.55) 45%, rgba(0,0,0,0.15) 75%, rgba(0,0,0,0) 100%)",
+            "linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.75) 30%, rgba(0,0,0,0.35) 60%, rgba(0,0,0,0) 90%)",
         }}
       />
 
@@ -173,21 +173,28 @@ const GraphicCanvas = forwardRef<
           padding: "72px 80px 88px",
           display: "flex",
           flexDirection: "column",
-          gap: 28,
+          gap: 24,
           alignItems: "flex-start",
           color: "#fff",
           textAlign: "right",
           direction: "rtl",
+          maxWidth: "100%",
+          boxSizing: "border-box",
         }}
       >
         <div
           style={{
-            fontSize: 92,
+            fontSize: 96,
             fontWeight: 800,
             lineHeight: 1.05,
             letterSpacing: "-0.02em",
-            textShadow: "0 2px 24px rgba(0,0,0,0.35)",
+            textShadow:
+              "0 2px 20px rgba(0,0,0,0.55), 0 1px 3px rgba(0,0,0,0.7)",
             width: "100%",
+            maxWidth: "100%",
+            wordBreak: "break-word",
+            overflowWrap: "break-word",
+            hyphens: "auto",
           }}
         >
           {item.headline}
@@ -198,9 +205,13 @@ const GraphicCanvas = forwardRef<
               fontSize: 34,
               fontWeight: 400,
               lineHeight: 1.35,
-              opacity: 0.92,
-              maxWidth: "88%",
-              textShadow: "0 1px 12px rgba(0,0,0,0.35)",
+              opacity: 0.95,
+              width: "100%",
+              maxWidth: "100%",
+              wordBreak: "break-word",
+              overflowWrap: "break-word",
+              textShadow:
+                "0 2px 12px rgba(0,0,0,0.55), 0 1px 2px rgba(0,0,0,0.6)",
             }}
           >
             {item.subheadline}
@@ -209,7 +220,7 @@ const GraphicCanvas = forwardRef<
         {item.cta && (
           <div
             style={{
-              marginTop: 12,
+              marginTop: 8,
               padding: "22px 44px",
               borderRadius: 999,
               background: accentColor,
@@ -217,13 +228,19 @@ const GraphicCanvas = forwardRef<
               fontSize: 30,
               fontWeight: 700,
               letterSpacing: "-0.01em",
-              boxShadow: "0 12px 32px rgba(0,0,0,0.35)",
+              boxShadow: "0 12px 32px rgba(0,0,0,0.4)",
+              maxWidth: "100%",
+              wordBreak: "keep-all",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
             }}
           >
             {item.cta}
           </div>
         )}
       </div>
+
     </div>
   );
 });
