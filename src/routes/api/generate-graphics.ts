@@ -30,40 +30,39 @@ function buildPrompt(input: z.infer<typeof InputSchema>, variant: number) {
 }
 
 async function generateOne(prompt: string, apiKey: string): Promise<string> {
-  const res = await fetch("https://api.openai.com/v1/images/generations", {
+  const res = await fetch("https://ai.gateway.lovable.dev/v1/images/generations", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "dall-e-3",
+      model: "openai/gpt-image-2",
       prompt,
       n: 1,
       size: "1024x1024",
-      quality: "standard",
+      quality: "low",
     }),
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`OpenAI ${res.status}: ${text}`);
+    throw new Error(`AI Gateway ${res.status}: ${text}`);
   }
   const json = (await res.json()) as { data: Array<{ url?: string; b64_json?: string }> };
-  const item = json.data[0];
-  if (item.url) return item.url;
-  if (item.b64_json) return `data:image/png;base64,${item.b64_json}`;
-  throw new Error("OpenAI returned no image data");
-
+  const item = json.data?.[0];
+  if (item?.b64_json) return `data:image/png;base64,${item.b64_json}`;
+  if (item?.url) return item.url;
+  throw new Error("Gateway returned no image data");
 }
 
 export const Route = createFileRoute("/api/generate-graphics")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const apiKey = process.env.OPENAI_API_KEY;
+        const apiKey = process.env.LOVABLE_API_KEY;
         if (!apiKey) {
           return Response.json(
-            { error: "OPENAI_API_KEY is not configured" },
+            { error: "LOVABLE_API_KEY is not configured" },
             { status: 500 }
           );
         }
@@ -87,8 +86,8 @@ export const Route = createFileRoute("/api/generate-graphics")({
           return Response.json({ images });
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
-          const status = /401/.test(message)
-            ? 401
+          const status = /402/.test(message)
+            ? 402
             : /429/.test(message)
               ? 429
               : 500;
