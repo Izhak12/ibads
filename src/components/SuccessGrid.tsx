@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { GraphicCard, type GraphicItem } from "./GraphicCard";
 
 function layoutFor(count: number): { cols: number; rows: number } {
   if (count <= 1) return { cols: 1, rows: 1 };
@@ -8,13 +8,17 @@ function layoutFor(count: number): { cols: number; rows: number } {
 }
 
 export function SuccessGrid({
-  images,
+  items,
+  accentColor,
+  fileNameBase,
   onReset,
 }: {
-  images: string[];
+  items: GraphicItem[];
+  accentColor?: string;
+  fileNameBase?: string;
   onReset: () => void;
 }) {
-  const count = images.length;
+  const count = items.length;
   const { cols, rows } = layoutFor(count);
 
   return (
@@ -25,7 +29,7 @@ export function SuccessGrid({
             הגרפיקות מוכנות
           </div>
           <div className="text-sm text-black/50 mt-0.5">
-            {count} עיצובים נוצרו עבורך
+            {count} עיצובים נוצרו עבורך — רחף על גרפיקה כדי להוריד
           </div>
         </div>
         <button
@@ -48,25 +52,14 @@ export function SuccessGrid({
             margin: "0 auto",
           }}
         >
-          {images.map((src, i) => (
-            <motion.div
+          {items.map((item, i) => (
+            <GraphicCard
               key={i}
-              initial={{ opacity: 0, y: 12, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{
-                delay: i * 0.07,
-                duration: 0.55,
-                ease: [0.22, 1, 0.36, 1],
-              }}
-              className="relative min-w-0 min-h-0 rounded-2xl overflow-hidden bg-white shadow-[0_10px_30px_-15px_rgba(11,25,44,0.25)] border border-black/5"
-            >
-              <img
-                src={src}
-                alt={`גרפיקה ${i + 1}`}
-                className="w-full h-full object-cover"
-                loading="eager"
-              />
-            </motion.div>
+              item={item}
+              index={i}
+              accentColor={accentColor}
+              fileNameBase={fileNameBase}
+            />
           ))}
         </div>
       </div>
