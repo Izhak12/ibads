@@ -115,33 +115,28 @@ export const GraphicCard = forwardRef<HTMLDivElement, Props>(function GraphicCar
 
 // ---- Layout template engine ----
 
-type TemplateId = "horizontal" | "vertical" | "framed";
-type Palette = { bg: string; fg: string; muted: string; cta: string; ctaFg: string };
+type TemplateId = "chalkboard" | "luxury" | "collage";
 
-function pickTemplate(index: number, _accentColor: string): { template: TemplateId; palette: Palette } {
-  const templates: TemplateId[] = ["horizontal", "vertical", "framed"];
-  const template = templates[index % templates.length];
-
-  const palettes: Palette[] = [
-    // Deep Navy — light text, sand/gold CTA
-    { bg: "#0F1F38", fg: "#F9F6F0", muted: "#B8C2D1", cta: "#D9C48E", ctaFg: "#0F1F38" },
-    // Soft Cream — dark text, navy CTA
-    { bg: "#F9F6F0", fg: "#0F1F38", muted: "#4A5A73", cta: "#0F1F38", ctaFg: "#F9F6F0" },
-    // Sage Green — light text, navy CTA
-    { bg: "#8DA399", fg: "#F9F6F0", muted: "#EDEDE0", cta: "#0F1F38", ctaFg: "#F9F6F0" },
-  ];
-  const palette = palettes[index % palettes.length];
-  return { template, palette };
+function pickTemplate(index: number): TemplateId {
+  const templates: TemplateId[] = ["chalkboard", "luxury", "collage"];
+  return templates[index % templates.length];
 }
 
-const FONT_FAMILY = '"Heebo", system-ui, sans-serif';
+const HEEBO = '"Heebo", system-ui, sans-serif';
+const RUBIK = '"Rubik", system-ui, sans-serif';
+
+function getPhotos(item: GraphicItem): string[] {
+  const list = (item.photos && item.photos.length > 0 ? item.photos : [item.backgroundUrl]).filter(
+    Boolean,
+  ) as string[];
+  return list.length ? list : [""];
+}
 
 const GraphicCanvas = forwardRef<
   HTMLDivElement,
   { item: GraphicItem; accentColor: string; index: number }
->(function GraphicCanvas({ item, accentColor, index }, ref) {
-  const { template, palette } = pickTemplate(index, accentColor);
-
+>(function GraphicCanvas({ item, index }, ref) {
+  const template = pickTemplate(index);
   return (
     <div
       ref={ref}
@@ -151,200 +146,476 @@ const GraphicCanvas = forwardRef<
         height: RENDER_SIZE,
         position: "relative",
         overflow: "hidden",
-        backgroundColor: palette.bg,
-        fontFamily: FONT_FAMILY,
+        backgroundColor: "#000",
       }}
     >
-      {template === "horizontal" && <HorizontalSplit item={item} palette={palette} />}
-      {template === "vertical" && <VerticalSplit item={item} palette={palette} />}
-      {template === "framed" && <FramedCard item={item} palette={palette} />}
+      {template === "chalkboard" && <ChalkboardMarket item={item} />}
+      {template === "luxury" && <LuxuryPremium item={item} />}
+      {template === "collage" && <DynamicCollage item={item} />}
     </div>
   );
 });
 
-function TextBlock({
-  item,
-  palette,
-  headlineSize = 84,
-  subheadlineSize = 30,
-  ctaSize = 26,
-}: {
-  item: GraphicItem;
-  palette: Palette;
-  headlineSize?: number;
-  subheadlineSize?: number;
-  ctaSize?: number;
-}) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 28,
-        alignItems: "flex-end",
-        textAlign: "right",
-        direction: "rtl",
-        width: "100%",
-        color: palette.fg,
-        fontFamily: FONT_FAMILY,
-      }}
-    >
-      <div
-        style={{
-          fontSize: headlineSize,
-          fontWeight: 800,
-          lineHeight: 1.1,
-          letterSpacing: "-0.02em",
-          width: "100%",
-          wordBreak: "break-word",
-          overflowWrap: "break-word",
-          color: palette.fg,
-          fontFamily: FONT_FAMILY,
-        }}
-      >
-        {item.headline}
-      </div>
-      {item.subheadline && (
-        <div
-          style={{
-            fontSize: subheadlineSize,
-            fontWeight: 400,
-            lineHeight: 1.4,
-            width: "100%",
-            wordBreak: "break-word",
-            overflowWrap: "break-word",
-            color: palette.muted,
-            fontFamily: FONT_FAMILY,
-          }}
-        >
-          {item.subheadline}
-        </div>
-      )}
-      {item.cta && (
-        <div
-          style={{
-            marginTop: 20,
-            padding: "18px 40px",
-            borderRadius: 4,
-            background: palette.cta,
-            color: palette.ctaFg,
-            fontSize: ctaSize,
-            fontWeight: 700,
-            letterSpacing: "-0.01em",
-            boxShadow: "0 6px 20px rgba(15,31,56,0.18)",
-            maxWidth: "100%",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            alignSelf: "flex-end",
-            fontFamily: FONT_FAMILY,
-          }}
-        >
-          {item.cta}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Photo({ url, style }: { url: string; style: React.CSSProperties }) {
-  if (!url) {
-    return <div style={{ ...style, background: "#0F1F38" }} />;
-  }
-  return (
-    <img
-      src={url}
-      crossOrigin="anonymous"
-      alt=""
-      style={{ ...style, objectFit: "cover" }}
-    />
-  );
-}
-
-// Template A: photo top 55%, solid color bottom 45%
-function HorizontalSplit({ item, palette }: { item: GraphicItem; palette: Palette }) {
-  return (
-    <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}>
-      <Photo url={item.backgroundUrl} style={{ width: "100%", height: "55%", display: "block" }} />
-      <div
-        style={{
-          width: "100%",
-          height: "45%",
-          background: palette.bg,
-          padding: "80px 88px 88px",
-          display: "flex",
-          alignItems: "center",
-          boxSizing: "border-box",
-        }}
-      >
-        <TextBlock item={item} palette={palette} headlineSize={84} subheadlineSize={30} ctaSize={28} />
-      </div>
-    </div>
-  );
-}
-
-// Template B: photo right 50%, solid color left 50% (RTL)
-function VerticalSplit({ item, palette }: { item: GraphicItem; palette: Palette }) {
-  return (
-    <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "row" }}>
-      <div
-        style={{
-          width: "50%",
-          height: "100%",
-          background: palette.bg,
-          padding: "88px",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          boxSizing: "border-box",
-        }}
-      >
-        <TextBlock item={item} palette={palette} headlineSize={72} subheadlineSize={26} ctaSize={24} />
-      </div>
-      <Photo url={item.backgroundUrl} style={{ width: "50%", height: "100%" }} />
-    </div>
-  );
-}
-
-// Template C: solid bg, framed photo top, text below (right-aligned)
-function FramedCard({ item, palette }: { item: GraphicItem; palette: Palette }) {
+// ---------- Template 1: Chalkboard Market ----------
+function ChalkboardMarket({ item }: { item: GraphicItem }) {
+  const photos = getPhotos(item).slice(0, 3);
+  // Polaroid presets (positions in %, rotations)
+  const presets = [
+    { top: 90, left: 90, rot: -6, w: 400, h: 400 },
+    { top: 140, left: 380, rot: 4, w: 420, h: 420 },
+    { top: 60, left: 620, rot: -2, w: 380, h: 380 },
+  ];
   return (
     <div
       style={{
         position: "absolute",
         inset: 0,
-        background: palette.bg,
-        padding: "96px",
-        display: "flex",
-        flexDirection: "column",
-        boxSizing: "border-box",
+        background:
+          "radial-gradient(circle at 50% 40%, #262421 0%, #141311 55%, #0a0908 100%)",
+        overflow: "hidden",
       }}
     >
+      {/* chalk texture — subtle repeating specks */}
       <div
         style={{
-          width: "100%",
-          height: "52%",
-          borderRadius: 32,
-          overflow: "hidden",
-          boxShadow: "0 30px 60px -20px rgba(15,31,56,0.35), 0 10px 20px -10px rgba(15,31,56,0.2)",
-          flexShrink: 0,
+          position: "absolute",
+          inset: 0,
+          backgroundImage:
+            "radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1.5px), radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1.5px)",
+          backgroundSize: "6px 6px, 11px 11px",
+          backgroundPosition: "0 0, 3px 4px",
+          opacity: 0.6,
+          mixBlendMode: "screen",
         }}
-      >
-        <Photo url={item.backgroundUrl} style={{ width: "100%", height: "100%" }} />
-      </div>
+      />
+
+      {/* Polaroids */}
+      {photos.map((url, i) => {
+        const p = presets[i] ?? presets[0];
+        return (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              top: p.top,
+              left: p.left,
+              width: p.w,
+              height: p.h + 70,
+              background: "#f5efe4",
+              padding: 14,
+              paddingBottom: 84,
+              boxShadow:
+                "0 40px 70px -20px rgba(0,0,0,0.75), 0 15px 30px -10px rgba(0,0,0,0.55)",
+              transform: `rotate(${p.rot}deg)`,
+              zIndex: 10 + i,
+            }}
+          >
+            {url ? (
+              <img
+                src={url}
+                crossOrigin="anonymous"
+                alt=""
+                style={{ width: "100%", height: p.h, objectFit: "cover", display: "block" }}
+              />
+            ) : (
+              <div style={{ width: "100%", height: p.h, background: "#333" }} />
+            )}
+          </div>
+        );
+      })}
+
+      {/* Text block anchored bottom-right */}
       <div
         style={{
-          flex: 1,
-          width: "100%",
+          position: "absolute",
+          right: 96,
+          bottom: 96,
+          left: 96,
+          direction: "rtl",
+          textAlign: "right",
+          zIndex: 30,
           display: "flex",
           flexDirection: "column",
-          justifyContent: "center",
-          paddingTop: 48,
+          alignItems: "flex-end",
+          gap: 24,
         }}
       >
-        <TextBlock item={item} palette={palette} headlineSize={76} subheadlineSize={28} ctaSize={26} />
+        <div
+          style={{
+            fontFamily: RUBIK,
+            fontWeight: 900,
+            fontSize: 108,
+            lineHeight: 1.02,
+            letterSpacing: "-0.03em",
+            backgroundImage: "linear-gradient(135deg,#f6d365 0%,#fda085 100%)",
+            WebkitBackgroundClip: "text",
+            backgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            color: "#fda085",
+            textShadow: "0 4px 20px rgba(0,0,0,0.4)",
+            width: "100%",
+            wordBreak: "break-word",
+            overflowWrap: "break-word",
+          }}
+        >
+          {item.headline}
+        </div>
+        {item.subheadline && (
+          <div
+            style={{
+              fontFamily: HEEBO,
+              fontWeight: 400,
+              fontSize: 34,
+              lineHeight: 1.35,
+              color: "rgba(245,239,228,0.85)",
+              width: "100%",
+              wordBreak: "break-word",
+              overflowWrap: "break-word",
+            }}
+          >
+            {item.subheadline}
+          </div>
+        )}
+        {item.cta && (
+          <div
+            style={{
+              fontFamily: RUBIK,
+              fontWeight: 700,
+              fontSize: 30,
+              padding: "20px 44px",
+              background: "#f5efe4",
+              color: "#141311",
+              borderRadius: 6,
+              boxShadow:
+                "0 12px 28px rgba(0,0,0,0.55), inset 0 -3px 0 rgba(0,0,0,0.12)",
+              transform: "rotate(-1.5deg)",
+              whiteSpace: "nowrap",
+              maxWidth: "100%",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              letterSpacing: "0.01em",
+            }}
+          >
+            {item.cta}
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
+// ---------- Template 2: Luxury Premium ----------
+function LuxuryPremium({ item }: { item: GraphicItem }) {
+  const [hero] = getPhotos(item);
+  const GOLD = "#D4AF7A";
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        background: "linear-gradient(180deg,#0a1f18 0%,#050505 100%)",
+      }}
+    >
+      {/* Hero photo top 60% */}
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "60%" }}>
+        {hero ? (
+          <img
+            src={hero}
+            crossOrigin="anonymous"
+            alt=""
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          />
+        ) : (
+          <div style={{ width: "100%", height: "100%", background: "#0a1f18" }} />
+        )}
+        {/* Fade overlay into black */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0) 40%, rgba(5,5,5,0.85) 85%, #050505 100%)",
+          }}
+        />
+      </div>
+
+      {/* Text block bottom 40% */}
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: "42%",
+          padding: "40px 96px 96px",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "flex-end",
+          justifyContent: "center",
+          direction: "rtl",
+          textAlign: "right",
+          gap: 24,
+          boxSizing: "border-box",
+        }}
+      >
+        <Diamond size={44} color={GOLD} strokeWidth={1.5} />
+        <div
+          style={{
+            fontFamily: HEEBO,
+            fontWeight: 800,
+            fontSize: 96,
+            lineHeight: 1.05,
+            letterSpacing: "-0.02em",
+            color: GOLD,
+            width: "100%",
+            wordBreak: "break-word",
+            overflowWrap: "break-word",
+          }}
+        >
+          {item.headline}
+        </div>
+        <div
+          style={{
+            height: 1,
+            width: 160,
+            background: GOLD,
+            opacity: 0.7,
+            marginTop: -6,
+          }}
+        />
+        {item.subheadline && (
+          <div
+            style={{
+              fontFamily: HEEBO,
+              fontWeight: 400,
+              fontSize: 30,
+              lineHeight: 1.4,
+              color: "#F5F1EA",
+              width: "100%",
+              wordBreak: "break-word",
+              overflowWrap: "break-word",
+            }}
+          >
+            {item.subheadline}
+          </div>
+        )}
+        {item.cta && (
+          <div
+            style={{
+              marginTop: 8,
+              fontFamily: HEEBO,
+              fontWeight: 600,
+              fontSize: 26,
+              padding: "16px 40px",
+              border: `1.5px solid ${GOLD}`,
+              color: GOLD,
+              borderRadius: 2,
+              letterSpacing: "0.06em",
+              textTransform: "none",
+              whiteSpace: "nowrap",
+              maxWidth: "100%",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {item.cta}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------- Template 3: Dynamic Collage ----------
+function DynamicCollage({ item }: { item: GraphicItem }) {
+  const photos = getPhotos(item);
+  const heroPhoto = photos[0];
+  const secondaryPhoto = photos[1] ?? photos[0];
+  const ACCENT = "#E86A4E";
+  const NAVY = "#0F1F38";
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        background: "#F2ECE1",
+      }}
+    >
+      {/* Diagonal accent band */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: `linear-gradient(135deg, transparent 55%, ${ACCENT} 55%)`,
+          opacity: 0.95,
+        }}
+      />
+
+      {/* Large hero photo top-right */}
+      <div
+        style={{
+          position: "absolute",
+          top: 60,
+          right: 60,
+          width: 640,
+          height: 620,
+          borderRadius: "42% 58% 55% 45% / 52% 45% 55% 48%",
+          overflow: "hidden",
+          boxShadow: "0 40px 80px -20px rgba(15,31,56,0.55), 0 20px 40px -15px rgba(15,31,56,0.4)",
+          zIndex: 10,
+        }}
+      >
+        {heroPhoto ? (
+          <img
+            src={heroPhoto}
+            crossOrigin="anonymous"
+            alt=""
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          />
+        ) : (
+          <div style={{ width: "100%", height: "100%", background: NAVY }} />
+        )}
+      </div>
+
+      {/* Secondary photo bottom-left */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 80,
+          left: 60,
+          width: 400,
+          height: 400,
+          borderRadius: 28,
+          overflow: "hidden",
+          boxShadow: "0 30px 60px -20px rgba(15,31,56,0.55)",
+          transform: "rotate(-4deg)",
+          zIndex: 12,
+          border: "8px solid #F2ECE1",
+        }}
+      >
+        {secondaryPhoto ? (
+          <img
+            src={secondaryPhoto}
+            crossOrigin="anonymous"
+            alt=""
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          />
+        ) : (
+          <div style={{ width: "100%", height: "100%", background: NAVY }} />
+        )}
+      </div>
+
+      {/* Corner sticker */}
+      <div
+        style={{
+          position: "absolute",
+          top: 40,
+          left: 40,
+          width: 150,
+          height: 150,
+          borderRadius: "50%",
+          background: ACCENT,
+          color: "#FFF9F0",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: RUBIK,
+          fontWeight: 900,
+          fontSize: 22,
+          textAlign: "center",
+          transform: "rotate(-10deg)",
+          boxShadow: "0 12px 30px rgba(15,31,56,0.35)",
+          border: "3px solid #FFF9F0",
+          zIndex: 20,
+          padding: 14,
+          boxSizing: "border-box",
+          lineHeight: 1.1,
+          letterSpacing: "0.02em",
+        }}
+      >
+        חדש
+      </div>
+
+      {/* Text block middle-left */}
+      <div
+        style={{
+          position: "absolute",
+          right: 60,
+          left: 500,
+          top: 700,
+          bottom: 80,
+          direction: "rtl",
+          textAlign: "right",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "flex-end",
+          justifyContent: "flex-end",
+          gap: 22,
+          zIndex: 25,
+        }}
+      >
+        <div
+          style={{
+            fontFamily: HEEBO,
+            fontWeight: 800,
+            fontSize: 76,
+            lineHeight: 1.05,
+            letterSpacing: "-0.03em",
+            color: NAVY,
+            width: "100%",
+            wordBreak: "break-word",
+            overflowWrap: "break-word",
+            textShadow: "0 2px 10px rgba(242,236,225,0.9)",
+          }}
+        >
+          {item.headline}
+        </div>
+        {item.subheadline && (
+          <div
+            style={{
+              fontFamily: HEEBO,
+              fontWeight: 500,
+              fontSize: 28,
+              lineHeight: 1.35,
+              color: "#4A5A73",
+              width: "100%",
+              wordBreak: "break-word",
+              overflowWrap: "break-word",
+            }}
+          >
+            {item.subheadline}
+          </div>
+        )}
+        {item.cta && (
+          <div
+            style={{
+              marginTop: 8,
+              fontFamily: RUBIK,
+              fontWeight: 700,
+              fontSize: 28,
+              padding: "20px 40px",
+              background: NAVY,
+              color: "#FFF9F0",
+              borderRadius: 999,
+              boxShadow: "0 16px 36px rgba(15,31,56,0.4)",
+              transform: "rotate(-3deg)",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 12,
+              whiteSpace: "nowrap",
+              maxWidth: "100%",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              letterSpacing: "0.01em",
+            }}
+          >
+            <span>{item.cta}</span>
+            <ArrowLeft size={22} strokeWidth={2.5} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 
