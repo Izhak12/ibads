@@ -125,8 +125,8 @@ export const Route = createFileRoute("/api/generate-graphics")({
               body: JSON.stringify({
                 model: "google/gemini-2.5-flash",
                 messages: [
-                  { role: "system", content: SYSTEM_PROMPT },
-                  { role: "user", content: buildUserPrompt(input) },
+                  { role: "system", content: buildSystemPrompt(input) },
+                  { role: "user", content: `צור בדיוק ${input.amount} וריאציות שונות זו מזו בזווית ובניסוח. החזר JSON array בלבד.` },
                 ],
 
                 temperature: 0.9,
