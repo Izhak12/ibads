@@ -118,10 +118,10 @@ export const Route = createFileRoute("/api/generate-graphics")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const apiKey = process.env.LOVABLE_API_KEY;
+        const apiKey = process.env.OPENAI_API_KEY;
         if (!apiKey) {
           return Response.json(
-            { error: "LOVABLE_API_KEY is not configured" },
+            { error: "OPENAI_API_KEY is not configured" },
             { status: 500 },
           );
         }
@@ -137,7 +137,7 @@ export const Route = createFileRoute("/api/generate-graphics")({
 
         try {
           const res = await fetch(
-            "https://ai.gateway.lovable.dev/v1/chat/completions",
+            "https://api.openai.com/v1/chat/completions",
             {
               method: "POST",
               headers: {
@@ -145,20 +145,23 @@ export const Route = createFileRoute("/api/generate-graphics")({
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                model: "google/gemini-2.5-flash",
+                model: "gpt-4o",
+                temperature: 0.7,
+                response_format: { type: "json_object" },
                 messages: [
                   { role: "system", content: buildSystemPrompt(input) },
-                  { role: "user", content: `צור בדיוק ${input.amount} וריאציות שונות זו מזו בזווית ובניסוח. החזר JSON array בלבד.` },
+                  {
+                    role: "user",
+                    content: `צור בדיוק ${input.amount} וריאציות שונות זו מזו בזווית ובניסוח. החזר JSON object בפורמט: {"items":[{"headline":"...","subheadline":"...","cta":"..."}]}`,
+                  },
                 ],
-
-                temperature: 0.9,
               }),
             },
           );
           if (!res.ok) {
             const text = await res.text();
             const status = res.status === 402 || res.status === 429 ? res.status : 500;
-            return Response.json({ error: `AI Gateway ${res.status}: ${text}` }, { status });
+            return Response.json({ error: `OpenAI ${res.status}: ${text}` }, { status });
           }
           const json = (await res.json()) as {
             choices?: Array<{ message?: { content?: string } }>;
