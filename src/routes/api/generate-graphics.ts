@@ -20,7 +20,25 @@ export type GraphicText = {
   cta: string;
 };
 
-function buildPrompt(input: Input) {
+const SYSTEM_PROMPT = `You are a Senior Direct Response Copywriter and Meta Ads Strategist. Your task is to write high-converting, scroll-stopping copy for 1:1 image ads in Hebrew.
+
+Based on the client brief, generate distinct creative concepts.
+
+CRITICAL RULES:
+
+1. Headline (כותרת): Must be a strong hook addressing a specific pain point, desire, or undeniable offer. MAX 4-5 words. Punchy and direct. Do NOT use generic fluff like 'The perfect event'.
+
+2. Subheadline (כותרת משנה): Adds context or urgency. MAX 6-8 words.
+
+3. CTA (הנעה לפעולה): Short and action-driven. 2-3 words max (e.g., 'בדקו התאמה', 'לפרטים נוספים', 'קבלו הצעה').
+
+4. Vibe: High-end, persuasive, and authentic.
+
+5. Language: Native, professional Hebrew.
+
+Output strictly as a JSON array of objects with the keys: 'headline', 'subheadline', 'cta'. Return exactly the amount of objects requested by the user.`;
+
+function buildUserPrompt(input: Input) {
   const ctx: string[] = [];
   if (input.clientName) ctx.push(`שם העסק: ${input.clientName}`);
   if (input.clientIndustry) ctx.push(`תחום: ${input.clientIndustry}`);
@@ -29,22 +47,11 @@ function buildPrompt(input: Input) {
   if (input.brief) ctx.push(`בריף:\n${input.brief}`);
   if (input.text) ctx.push(`רעיון/טקסט מנחה מהמשתמש: ${input.text}`);
 
-  return `אתה קופירייטר בכיר לפרסומות ברשתות חברתיות בעברית.
-המשימה: לייצר ${input.amount} וריאציות טקסט שונות לגרפיקה של מודעה בפורמט מרובע (1080x1080) המיועד ל-Meta Ads.
-כל וריאציה צריכה להכיל שלושה שדות:
-- headline: כותרת ראשית קצרה, חדה, מושכת עין (2-6 מילים).
-- subheadline: משפט תמיכה אחד, מוסיף ערך/הבטחה/פרט (עד 12 מילים).
-- cta: כפתור קריאה לפעולה קצר מאוד (1-3 מילים, לדוגמה: "לפרטים נוספים", "הזמינו עכשיו", "דברו איתנו").
-
-חובה: כל הטקסטים בעברית תקנית, ללא אימוג'ים, ללא סימני פיסוק מיותרים, ללא #hashtags, ללא גרשיים בתוך הטקסטים.
-כל וריאציה חייבת להיות שונה בזווית ובניסוח מהאחרות (הצעת ערך שונה / כאב שונה / רגש שונה).
-
-הקשר הלקוח:
+  return `הקשר הלקוח:
 ${ctx.join("\n")}
 
-החזר JSON בלבד בפורמט הבא, ללא טקסט נוסף:
-{"items":[{"headline":"...","subheadline":"...","cta":"..."}]}
-עם בדיוק ${input.amount} פריטים במערך items.`;
+צור בדיוק ${input.amount} וריאציות שונות זו מזו בזווית ובניסוח.
+החזר JSON בלבד בפורמט: {"items":[{"headline":"...","subheadline":"...","cta":"..."}]}`;
 }
 
 function safeParseItems(raw: string, amount: number): GraphicText[] {
@@ -53,9 +60,14 @@ function safeParseItems(raw: string, amount: number): GraphicText[] {
     .replace(/^```\s*/i, "")
     .replace(/```\s*$/i, "")
     .trim();
-  const parsed = JSON.parse(cleaned) as { items?: unknown };
-  const items = Array.isArray(parsed.items) ? parsed.items : [];
-  const norm: GraphicText[] = items.slice(0, amount).map((it) => {
+  // Model may return either {items:[...]} or a bare array [...]
+  const parsed = JSON.parse(cleaned) as unknown;
+  const items = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray((parsed as { items?: unknown })?.items)
+      ? ((parsed as { items: unknown[] }).items)
+      : [];
+  return items.slice(0, amount).map((it) => {
     const o = (it ?? {}) as Record<string, unknown>;
     return {
       headline: String(o.headline ?? "").trim(),
@@ -63,8 +75,8 @@ function safeParseItems(raw: string, amount: number): GraphicText[] {
       cta: String(o.cta ?? "").trim() || "לפרטים נוספים",
     };
   });
-  return norm;
 }
+
 
 export const Route = createFileRoute("/api/generate-graphics")({
   server: {
@@ -99,13 +111,10 @@ export const Route = createFileRoute("/api/generate-graphics")({
               body: JSON.stringify({
                 model: "google/gemini-2.5-flash",
                 messages: [
-                  {
-                    role: "system",
-                    content:
-                      "You are a senior Hebrew copywriter. Reply with valid JSON only. Never wrap in code fences.",
-                  },
-                  { role: "user", content: buildPrompt(input) },
+                  { role: "system", content: SYSTEM_PROMPT },
+                  { role: "user", content: buildUserPrompt(input) },
                 ],
+
                 temperature: 0.9,
               }),
             },
