@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Plus, Sparkles } from "lucide-react";
+import { ImageOff, Plus, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import {
   Select,
@@ -12,39 +12,65 @@ import {
 import { AppleSlider } from "./AppleSlider";
 import { PreviewPanel, type PreviewState } from "./PreviewPanel";
 import { useClients } from "@/context/ClientsContext";
+import { useClientAssets } from "@/hooks/useClientAssets";
+import type { GraphicItem } from "./GraphicCard";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
 export function CreateScreen() {
-  const { clients, selectedClientId, setSelectedClientId, openClientDialog } = useClients();
+  const { clients, selectedClientId, setSelectedClientId, openClientDialog, openClientDialogFor } =
+    useClients();
   const [text, setText] = useState("");
   const [brief, setBrief] = useState("");
   const [count, setCount] = useState(3);
   const [preview, setPreview] = useState<PreviewState>("idle");
-  const [images, setImages] = useState<string[]>([]);
+  const [items, setItems] = useState<GraphicItem[]>([]);
+
+  const client = clients.find((c) => c.id === selectedClientId) ?? null;
+  const { assets } = useClientAssets(selectedClientId);
+  const accentColor = client?.brandColors?.[1] ?? client?.brandColors?.[0] ?? "#1E67FF";
+  const fileNameBase = client?.name?.replace(/\s+/g, "-").toLowerCase() || "graphic";
+
+  const canGenerate = !!client && assets.length > 0 && preview !== "loading";
 
   const handleGenerate = async () => {
+    if (!client) {
+      toast.error("בחר לקוח לפני יצירת גרפיקות");
+      return;
+    }
+    if (assets.length === 0) {
+      toast.error("אין תמונות ללקוח", {
+        description: "העלה תמונות עסק במסך עריכת הלקוח לפני יצירת גרפיקות.",
+      });
+      return;
+    }
     setPreview("loading");
-    setImages([]);
-    const client = clients.find((c) => c.id === selectedClientId);
+    setItems([]);
     try {
       const res = await fetch("/api/generate-graphics", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          clientName: client?.name ?? "",
-          clientIndustry: client?.industry ?? "",
-          targetAudience: client?.targetAudience ?? "",
-          brandVibe: client?.brandVibe ?? "",
-          brandColors: client?.brandColors ?? [],
+          clientName: client.name,
+          clientIndustry: client.industry,
+          targetAudience: client.targetAudience,
+          brandVibe: client.brandVibe,
+          brandColors: client.brandColors,
           text,
-          brief: [client?.brief, brief].filter(Boolean).join("\n\n"),
+          brief: [client.brief, brief].filter(Boolean).join("\n\n"),
           amount: count,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? "שגיאה");
-      setImages(data.images);
+      const texts = data.items as Array<{ headline: string; subheadline: string; cta: string }>;
+      const composed: GraphicItem[] = texts.map((t, i) => ({
+        headline: t.headline,
+        subheadline: t.subheadline,
+        cta: t.cta,
+        backgroundUrl: assets[i % assets.length].url,
+      }));
+      setItems(composed);
       setPreview("success");
     } catch (err) {
       console.error(err);
@@ -76,9 +102,7 @@ export function CreateScreen() {
 
             {/* Client */}
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-[#0B192C]/80">
-                בחר לקוח
-              </label>
+              <label className="text-sm font-medium text-[#0B192C]/80">בחר לקוח</label>
               <Select
                 value={selectedClientId ?? undefined}
                 onValueChange={setSelectedClientId}
@@ -102,6 +126,40 @@ export function CreateScreen() {
                 <Plus className="w-3 h-3" />
                 צור לקוח חדש
               </button>
+
+              {/* Assets summary */}
+              {client && (
+                <div className="mt-3 rounded-2xl border border-black/5 bg-black/[0.02] p-3">
+                  {assets.length === 0 ? (
+                    <div className="flex items-center gap-2 text-xs text-black/60">
+                      <ImageOff className="w-4 h-4" />
+                      <span>אין תמונות ללקוח.</span>
+                      <button
+                        onClick={() => openClientDialogFor(client.id)}
+                        className="text-[#1E67FF] font-medium hover:underline"
+                      >
+                        העלה תמונות
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-black/60">
+                        {assets.length} תמונות זמינות לרקע
+                      </div>
+                      <div className="flex -space-x-2 rtl:space-x-reverse">
+                        {assets.slice(0, 4).map((a) => (
+                          <img
+                            key={a.id}
+                            src={a.url}
+                            alt=""
+                            className="w-7 h-7 rounded-lg object-cover border border-white shadow-sm"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Text */}
@@ -137,9 +195,7 @@ export function CreateScreen() {
             {/* Slider */}
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-[#0B192C]/80">
-                  כמות גרפיקות
-                </label>
+                <label className="text-sm font-medium text-[#0B192C]/80">כמות גרפיקות</label>
                 <div className="text-2xl font-semibold text-[#0B192C] tabular-nums tracking-tight">
                   {count}
                 </div>
@@ -154,7 +210,7 @@ export function CreateScreen() {
             {/* Submit */}
             <button
               onClick={handleGenerate}
-              disabled={preview === "loading"}
+              disabled={!canGenerate}
               className="mt-2 h-14 rounded-2xl bg-[#0B192C] text-white text-sm font-medium hover:bg-[#0B192C]/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-[0_15px_35px_-12px_rgba(11,25,44,0.5)] hover:shadow-[0_15px_35px_-8px_rgba(30,103,255,0.4)] disabled:opacity-60"
             >
               <Sparkles className="w-4 h-4" />
@@ -164,7 +220,13 @@ export function CreateScreen() {
         </div>
       </div>
 
-      <PreviewPanel state={preview} images={images} onReset={() => setPreview("idle")} />
+      <PreviewPanel
+        state={preview}
+        items={items}
+        accentColor={accentColor}
+        fileNameBase={fileNameBase}
+        onReset={() => setPreview("idle")}
+      />
     </>
   );
 }
