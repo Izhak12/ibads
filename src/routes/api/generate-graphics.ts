@@ -77,17 +77,19 @@ function buildSystemPrompt(input: Input) {
 
 CRITICAL FORMATTING REQUIREMENT (DO NOT IGNORE):
 
-The application UI will overlay your text onto real client photos. You MUST output strictly as a JSON array containing exactly ${amountOfGraphics} objects. Do not wrap the JSON in markdown blocks (no \`\`\`json) and do not add any conversational text.
+The application UI will overlay your text onto real client photos. You MUST output strictly as a JSON object with an "items" array containing exactly ${amountOfGraphics} objects. Do not wrap the JSON in markdown blocks (no \`\`\`json) and do not add any conversational text.
 
 Format exactly like this:
 
-[
-  {
-    "headline": "הכותרת הראשית כאן",
-    "subheadline": "תת הכותרת כאן",
-    "cta": "טקסט הנעה לפעולה כאן"
-  }
-]`;
+{
+  "items": [
+    {
+      "headline": "הכותרת הראשית כאן",
+      "subheadline": "תת הכותרת כאן",
+      "cta": "טקסט הנעה לפעולה כאן"
+    }
+  ]
+}`;
 }
 
 function safeParseItems(raw: string, amount: number): GraphicText[] {
