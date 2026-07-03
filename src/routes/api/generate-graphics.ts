@@ -111,13 +111,10 @@ export const Route = createFileRoute("/api/generate-graphics")({
               body: JSON.stringify({
                 model: "google/gemini-2.5-flash",
                 messages: [
-                  {
-                    role: "system",
-                    content:
-                      "You are a senior Hebrew copywriter. Reply with valid JSON only. Never wrap in code fences.",
-                  },
-                  { role: "user", content: buildPrompt(input) },
+                  { role: "system", content: SYSTEM_PROMPT },
+                  { role: "user", content: buildUserPrompt(input) },
                 ],
+
                 temperature: 0.9,
               }),
             },
