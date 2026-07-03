@@ -64,12 +64,21 @@ export function CreateScreen() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? "שגיאה");
       const texts = data.items as Array<{ headline: string; subheadline: string; cta: string }>;
-      const composed: GraphicItem[] = texts.map((t, i) => ({
-        headline: t.headline,
-        subheadline: t.subheadline,
-        cta: t.cta,
-        backgroundUrl: assets[i % assets.length].url,
-      }));
+      const composed: GraphicItem[] = texts.map((t, i) => {
+        // Deterministic photo rotation per item (up to 3 photos)
+        const photos: string[] = [];
+        const n = Math.min(3, assets.length);
+        for (let k = 0; k < n; k++) {
+          photos.push(assets[(i + k) % assets.length].url);
+        }
+        return {
+          headline: t.headline,
+          subheadline: t.subheadline,
+          cta: t.cta,
+          backgroundUrl: photos[0],
+          photos,
+        };
+      });
       setItems(composed);
       setPreview("success");
     } catch (err) {
