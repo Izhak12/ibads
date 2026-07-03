@@ -20,38 +20,52 @@ export type GraphicText = {
   cta: string;
 };
 
-const SYSTEM_PROMPT = `You are a Senior Direct Response Copywriter and Meta Ads Strategist. Your task is to write high-converting, scroll-stopping copy for 1:1 image ads in Hebrew.
+function buildSystemPrompt(input: Input) {
+  const clientName = input.clientName || "לא צוין";
+  const clientBrief =
+    [input.brief, input.clientIndustry && `תחום: ${input.clientIndustry}`, input.targetAudience && `קהל יעד: ${input.targetAudience}`, input.brandVibe && `טון וסגנון: ${input.brandVibe}`]
+      .filter(Boolean)
+      .join("\n") || "לא צוין";
+  const optionalText = input.text || "אין";
+  const amountOfGraphics = input.amount;
 
-Based on the client brief, generate distinct creative concepts.
+  return `תפקיד ופרסונה (Role):
 
-CRITICAL RULES:
+אתה גרפיקאי בכיר עם 10 שנות ניסיון ביצירת גרפיקות לממומן, ברזולוציה מרובעת, תוך שמירה על כללי ui, היררכיית טקסט, בחירת קופי (טקסט שיווקי) מדויק לקהל היעד וברמה גבוהה במיוחד, ומומחה ביצירת גרפיקות בכל מיני סגנונות שונים.
 
-1. Headline (כותרת): Must be a strong hook addressing a specific pain point, desire, or undeniable offer. MAX 4-5 words. Punchy and direct. Do NOT use generic fluff like 'The perfect event'.
+המשימה וההקשר (Task & Context):
 
-2. Subheadline (כותרת משנה): Adds context or urgency. MAX 6-8 words.
+המשימה שלך היא ליצור את הקופי לגרפיקות שונות עבור העסק.
 
-3. CTA (הנעה לפעולה): Short and action-driven. 2-3 words max (e.g., 'בדקו התאמה', 'לפרטים נוספים', 'קבלו הצעה').
+העסק שלי הוא: ${clientName}
 
-4. Vibe: High-end, persuasive, and authentic.
+בריף מפורט וקהל יעד: ${clientBrief}
 
-5. Language: Native, professional Hebrew.
+טקסט חובה לשילוב (אם קיים): ${optionalText}
 
-Output strictly as a JSON array of objects with the keys: 'headline', 'subheadline', 'cta'. Return exactly the amount of objects requested by the user.`;
+סגנון וטון דיבור (Tone & Style):
 
-function buildUserPrompt(input: Input) {
-  const ctx: string[] = [];
-  if (input.clientName) ctx.push(`שם העסק: ${input.clientName}`);
-  if (input.clientIndustry) ctx.push(`תחום: ${input.clientIndustry}`);
-  if (input.targetAudience) ctx.push(`קהל יעד: ${input.targetAudience}`);
-  if (input.brandVibe) ctx.push(`טון וסגנון: ${input.brandVibe}`);
-  if (input.brief) ctx.push(`בריף:\n${input.brief}`);
-  if (input.text) ctx.push(`רעיון/טקסט מנחה מהמשתמש: ${input.text}`);
+תשלב את סגנון הדיבור וטון הדיבור בהתאם לקהל היעד, ואתה יכול לנסות כל מיני סגנונות בהתאם לצורך.
 
-  return `הקשר הלקוח:
-${ctx.join("\n")}
+גבולות גזרה (Constraints / Rules)
 
-צור בדיוק ${input.amount} וריאציות שונות זו מזו בזווית ובניסוח.
-החזר JSON בלבד בפורמט: {"items":[{"headline":"...","subheadline":"...","cta":"..."}]}`;
+אסור לך לכתוב טקסט עם שגיאות כתיב, אסור לך לשכוח לשים הנעה לפעולה בכל גרפיקה, ואסור לך לעשות היררכיית טקסט לא נכונה שנראית לא מקצועית. אל תשתמש במילים מסובכות עבור קהל יעד סטנדרטי.
+
+אסור לך בשום פנים ואופן להמציא לוגו או שם עסק שלא נתתי לך.
+
+מבנה הפלט (Format):
+
+CRITICAL: You must return ONLY a JSON array containing exactly ${amountOfGraphics} objects. Do not wrap it in markdown blockquotes.
+
+Each object must have these exact keys to construct the graphic:
+
+[
+  {
+    "headline": "הטקסט המרכזי והבולט",
+    "subheadline": "טקסט המשנה",
+    "cta": "טקסט קצר לכפתור ההנעה לפעולה"
+  }
+]`;
 }
 
 function safeParseItems(raw: string, amount: number): GraphicText[] {
@@ -111,8 +125,8 @@ export const Route = createFileRoute("/api/generate-graphics")({
               body: JSON.stringify({
                 model: "google/gemini-2.5-flash",
                 messages: [
-                  { role: "system", content: SYSTEM_PROMPT },
-                  { role: "user", content: buildUserPrompt(input) },
+                  { role: "system", content: buildSystemPrompt(input) },
+                  { role: "user", content: `צור בדיוק ${input.amount} וריאציות שונות זו מזו בזווית ובניסוח. החזר JSON array בלבד.` },
                 ],
 
                 temperature: 0.9,
