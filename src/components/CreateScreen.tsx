@@ -27,7 +27,8 @@ export function CreateScreen() {
   const [items, setItems] = useState<GraphicItem[]>([]);
 
   const client = clients.find((c) => c.id === selectedClientId) ?? null;
-  const { assets } = useClientAssets(selectedClientId);
+  const { assets } = useClientAssets(selectedClientId, "photo");
+  const { assets: refs } = useClientAssets(selectedClientId, "reference");
   const accentColor = client?.brandColors?.[1] ?? client?.brandColors?.[0] ?? "#1E67FF";
   const fileNameBase = client?.name?.replace(/\s+/g, "-").toLowerCase() || "graphic";
 
