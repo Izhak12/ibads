@@ -1,0 +1,2 @@
+ALTER TABLE public.client_assets ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'photo' CHECK (kind IN ('photo','reference'));
+CREATE INDEX IF NOT EXISTS client_assets_client_kind_idx ON public.client_assets (client_id, kind);

@@ -19,6 +19,7 @@ export type Database = {
           client_id: string
           created_at: string
           id: string
+          kind: string
           storage_path: string
           user_id: string
         }
@@ -26,6 +27,7 @@ export type Database = {
           client_id: string
           created_at?: string
           id?: string
+          kind?: string
           storage_path: string
           user_id: string
         }
@@ -33,6 +35,7 @@ export type Database = {
           client_id?: string
           created_at?: string
           id?: string
+          kind?: string
           storage_path?: string
           user_id?: string
         }
