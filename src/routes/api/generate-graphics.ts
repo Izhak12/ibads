@@ -152,7 +152,7 @@ export const Route = createFileRoute("/api/generate-graphics")({
               subheadline: input.text || input.brandVibe || "",
               cta: "לפרטים נוספים",
               designBrief:
-                "Premium square social ad. Elegant editorial layout with the client photo as a large hero on one half and a clean typographic block on the other. Use the brand colors as accents on a neutral background. Modern sans-serif Hebrew typography, generous whitespace, luxury feel.",
+                "כיוון אמנותי: modern minimal editorial פרימיום.\nקומפוזיציה: עמודה טיפוגרפית ימנית ובליד צילום בשמאל, יחס 40/60.\nדקורציה: divider דק ובאדג' קטן מוזהב פינת המודעה.\nUSPs: ללא.\nCTA: כפתור מלא ברוחב, פינות מעוגלות, אייקון חץ.\nמיקרו־קופי: שורה תחתונה אלגנטית.\nצבעים: רקע ניטרלי חם, טקסט כהה, אקסנט בצבע המותג הראשי.",
             });
           }
           return Response.json({ items });
