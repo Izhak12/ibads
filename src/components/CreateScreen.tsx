@@ -274,6 +274,9 @@ export function CreateScreen() {
                 <span>1</span>
                 <span>10</span>
               </div>
+              <div className="text-[11px] text-black/50 leading-relaxed" dir="rtl">
+                יצירת כל תמונה יכולה לקחת עד דקה — התמונות מופיעות בהדרגה במסך התצוגה.
+              </div>
             </div>
 
             {/* Submit */}
