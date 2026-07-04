@@ -13,6 +13,8 @@ import { AppleSlider } from "./AppleSlider";
 import { PreviewPanel, type PreviewState } from "./PreviewPanel";
 import { useClients } from "@/context/ClientsContext";
 import { useClientAssets } from "@/hooks/useClientAssets";
+import { saveGeneratedGraphic } from "@/hooks/useGeneratedGraphics";
+import { useQueryClient } from "@tanstack/react-query";
 import type { GraphicItem } from "./GraphicCard";
 
 const ease = [0.22, 1, 0.36, 1] as const;
