@@ -263,7 +263,15 @@ export function ClientDialog({
 
             {/* Business assets */}
             <Section title="נכסים דיגיטליים (תמונות העסק)">
-              <AssetsUploader clientId={editingClientId} />
+              <AssetsUploader clientId={editingClientId} kind="photo" />
+            </Section>
+
+            {/* Style reference ads */}
+            <Section title="דוגמאות עיצוב (סטייל רפרנס)">
+              <div className="text-[11px] text-black/50 leading-relaxed -mt-1">
+                העלה 1–3 מודעות מוגמרות שאהבת — הסגנון שלהן ישמש השראה לעיצוב (לא הטקסט ולא הצילומים).
+              </div>
+              <AssetsUploader clientId={editingClientId} kind="reference" />
             </Section>
 
             {/* AI Brief */}
