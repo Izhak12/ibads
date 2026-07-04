@@ -28,10 +28,10 @@ function buildSystemPrompt(input: Input) {
       .filter(Boolean)
       .join("\n") || "לא צוין";
   const optionalText = input.text || "אין";
-  const brandColors = input.brandColors.length ? input.brandColors.join(", ") : "not specified";
+  const brandColors = input.brandColors.length ? input.brandColors.join(", ") : "לא צוין";
   const amountOfGraphics = input.amount;
 
-  return `אתה קופיריטר וגרפיקאי בכיר לקריאייטיבים ממומנים, וגם ארט־דירקטור שכותב בריפים ויזואליים באנגלית.
+  return `אתה קופיריטר בכיר לקריאייטיבים ממומנים וגם ארט־דירקטור מנוסה שכותב בריפים ויזואליים מלאים בעברית.
 
 המשימה: לייצר ${amountOfGraphics} קונספטים מובחנים לחלוטין לגרפיקה מרובעת 1:1 עבור:
 שם העסק: ${clientName}
@@ -39,23 +39,31 @@ function buildSystemPrompt(input: Input) {
 צבעי מותג: ${brandColors}
 טקסט חובה על הגרפיקה (אם צוין): ${optionalText}
 
-לכל קונספט אתה מחזיר 4 שדות:
+לכל קונספט החזר 4 שדות:
 1. headline (עברית) – כותרת קצרה, חדה, שיווקית, בלי שגיאות.
 2. subheadline (עברית) – משפט תמיכה שמסביר את הערך.
-3. cta (עברית) – הנעה לפעולה ברורה (למשל "לפרטים והזמנות", "השאירו פרטים").
-4. designBrief (ENGLISH, 2-4 sentences) – a rich art-direction brief for THIS specific ad only. Must describe: composition & layout, mood/emotion, exactly how to use the brand colors (${brandColors}), typography style, and where/how the real client photo appears (hero crop, collage, framed inset, etc.). Every concept in the batch must be VISUALLY DISTINCT from the others – different composition, different mood, different photo treatment. No two designBriefs may describe the same layout.
+3. cta (עברית) – הנעה לפעולה ברורה (למשל "לפרטים והזמנות", "השאירו פרטים", "שלחו הודעה בוואטסאפ").
+4. designBrief (עברית, 5–8 שורות) – בריף ארט־דירקטור מלא לקונספט הזה בלבד. חובה שיפרט:
+   • כיוון אמנותי כללי ומצב־רוח (למשל "chalkboard rustic", "gold-foil luxury editorial", "kraft-paper deli", "modern minimal editorial", "vibrant collage", "risograph", "magazine spread", "typographic poster").
+   • קומפוזיציה מדויקת – איפה עומד הטקסט (עמודה ימנית/שמאלית/עליונה/תחתונה), איפה יושב הצילום, האם יש בליד, יחסי שטח בין טקסט לצילום.
+   • מערכת דקורטיבית ייחודית לקונספט – divider, באדג', חותמת, מסגרת, טקסטורה (זהב, גיר, קראפט, נייר, סריגה, ריזוגרף וכו'). כל קונספט חייב טקסטורה/דקורציה שונה מהאחרים.
+   • כשמתאים – שורת 3–4 USPs עם אייקון + לייבל קצר (למשל "כשר · משלוחים · מתנה חינם · טרי יומי").
+   • עיצוב כפתור CTA – צורה, מיקום, אייקון. כשהטקסט מזמין לפנייה בוואטסאפ הוסף אייקון WhatsApp; אחרת חץ או אייקון מתאים אחר.
+   • מיקרו־קופי תחתון בשורה אחת כשמתאים (למשל "מושלם לימי הולדת, אירועים פרטיים וחגיגות").
+   • איך משתמשים בצבעי המותג (${brandColors}) – מה הצבע הדומיננטי, מה משמש כאקסנט, על מה יושב הטקסט.
 
 חוקים:
+- כל קונספט חייב להשתמש בכיוון אמנותי שונה מהותית משאר הקונספטים באותה סדרה – שונה במצב־רוח, בטקסטורה, בקומפוזיציה ובמערכת הדקורטיבית.
 - אסור להמציא שם עסק או לוגו.
 - אסור טקסט עברי עם שגיאות.
-- אסור טון זול / הנחות / קהל מחפש מחיר. הטון תמיד יוקרתי־נגיש.
-- כל קונספט מרגיש כמו מודעת פרימיום, לא תבנית AI.
+- אסור טון זול / הנחות אגרסיביות / קהל מחפש מחיר. הטון תמיד יוקרתי־נגיש.
+- כל קונספט מרגיש כמו מודעת פרימיום מעוצבת ביד, לא תבנית AI.
 
 פורמט פלט:
 JSON object בלבד, בלי markdown ובלי טקסט נלווה, בצורה הבאה:
 {
   "items": [
-    { "headline": "…", "subheadline": "…", "cta": "…", "designBrief": "…" }
+    { "headline": "…", "subheadline": "…", "cta": "…", "designBrief": "כיוון אמנותי: …\\nקומפוזיציה: …\\nדקורציה: …\\nUSPs: …\\nCTA: …\\nמיקרו־קופי: …\\nצבעים: …" }
   ]
 }`;
 }
@@ -116,13 +124,13 @@ export const Route = createFileRoute("/api/generate-graphics")({
               },
               body: JSON.stringify({
                 model: "gpt-4o",
-                temperature: 0.9,
+                temperature: 1.0,
                 response_format: { type: "json_object" },
                 messages: [
                   { role: "system", content: buildSystemPrompt(input) },
                   {
                     role: "user",
-                    content: `צור בדיוק ${input.amount} וריאציות שונות זו מזו – כל אחת עם designBrief באנגלית שמתאר קונספט ויזואלי ייחודי. החזר JSON object בפורמט: {"items":[{"headline":"...","subheadline":"...","cta":"...","designBrief":"..."}]}`,
+                    content: `צור בדיוק ${input.amount} וריאציות שונות זו מזו מהותית – כל אחת עם designBrief מלא בעברית בסגנון ארט־דירקטור (5–8 שורות, מכסה כיוון אמנותי, קומפוזיציה, דקורציה, USPs, CTA, מיקרו־קופי, שימוש בצבעי המותג). כל וריאציה חייבת להיות בעולם אסתטי שונה לחלוטין מהאחרות. החזר JSON object בפורמט: {"items":[{"headline":"...","subheadline":"...","cta":"...","designBrief":"..."}]}`,
                   },
                 ],
               }),
@@ -144,7 +152,7 @@ export const Route = createFileRoute("/api/generate-graphics")({
               subheadline: input.text || input.brandVibe || "",
               cta: "לפרטים נוספים",
               designBrief:
-                "Premium square social ad. Elegant editorial layout with the client photo as a large hero on one half and a clean typographic block on the other. Use the brand colors as accents on a neutral background. Modern sans-serif Hebrew typography, generous whitespace, luxury feel.",
+                "כיוון אמנותי: modern minimal editorial פרימיום.\nקומפוזיציה: עמודה טיפוגרפית ימנית ובליד צילום בשמאל, יחס 40/60.\nדקורציה: divider דק ובאדג' קטן מוזהב פינת המודעה.\nUSPs: ללא.\nCTA: כפתור מלא ברוחב, פינות מעוגלות, אייקון חץ.\nמיקרו־קופי: שורה תחתונה אלגנטית.\nצבעים: רקע ניטרלי חם, טקסט כהה, אקסנט בצבע המותג הראשי.",
             });
           }
           return Response.json({ items });

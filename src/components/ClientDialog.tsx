@@ -263,7 +263,15 @@ export function ClientDialog({
 
             {/* Business assets */}
             <Section title="נכסים דיגיטליים (תמונות העסק)">
-              <AssetsUploader clientId={editingClientId} />
+              <AssetsUploader clientId={editingClientId} kind="photo" />
+            </Section>
+
+            {/* Style reference ads */}
+            <Section title="דוגמאות עיצוב (סטייל רפרנס)">
+              <div className="text-[11px] text-black/50 leading-relaxed -mt-1">
+                העלה 1–3 מודעות מוגמרות שאהבת — הסגנון שלהן ישמש השראה לעיצוב (לא הטקסט ולא הצילומים).
+              </div>
+              <AssetsUploader clientId={editingClientId} kind="reference" />
             </Section>
 
             {/* AI Brief */}
@@ -418,10 +426,16 @@ function Section({
 const MAX_FILE_MB = 10;
 const ACCEPT = ["image/jpeg", "image/png", "image/webp"];
 
-function AssetsUploader({ clientId }: { clientId: string | null }) {
+function AssetsUploader({
+  clientId,
+  kind = "photo",
+}: {
+  clientId: string | null;
+  kind?: "photo" | "reference";
+}) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const { assets, isLoading, uploading, uploadFiles, deleteAsset } =
-    useClientAssets(clientId);
+    useClientAssets(clientId, kind);
   const [dragOver, setDragOver] = useState(false);
 
   if (!clientId) {

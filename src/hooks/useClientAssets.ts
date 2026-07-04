@@ -2,10 +2,13 @@ import { useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+export type AssetKind = "photo" | "reference";
+
 export type ClientAsset = {
   id: string;
   storagePath: string;
   url: string;
+  kind: AssetKind;
 };
 
 const BUCKET = "client-assets";
@@ -24,9 +27,12 @@ async function signMany(paths: string[]): Promise<Record<string, string>> {
   return map;
 }
 
-export function useClientAssets(clientId: string | null) {
+export function useClientAssets(
+  clientId: string | null,
+  kind: AssetKind = "photo",
+) {
   const qc = useQueryClient();
-  const key = ["client-assets", clientId] as const;
+  const key = ["client-assets", clientId, kind] as const;
 
   const query = useQuery({
     queryKey: key,
@@ -35,16 +41,22 @@ export function useClientAssets(clientId: string | null) {
       if (!clientId) return [];
       const { data, error } = await supabase
         .from("client_assets")
-        .select("id,storage_path")
+        .select("id,storage_path,kind")
         .eq("client_id", clientId)
+        .eq("kind", kind)
         .order("created_at", { ascending: true });
       if (error) throw error;
-      const rows = data ?? [];
+      const rows = (data ?? []) as Array<{
+        id: string;
+        storage_path: string;
+        kind: AssetKind;
+      }>;
       const signed = await signMany(rows.map((r) => r.storage_path));
       return rows.map((r) => ({
         id: r.id,
         storagePath: r.storage_path,
         url: signed[r.storage_path] ?? "",
+        kind: r.kind,
       }));
     },
   });
@@ -70,7 +82,9 @@ export function useClientAssets(clientId: string | null) {
           client_id: clientId,
           user_id: user.id,
           storage_path: path,
-        });
+          kind,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any);
         if (insErr) throw insErr;
       }
     },

@@ -1,64 +1,87 @@
-# Pipeline rebuild: gpt-image-1 as the actual designer
+# Upgrade: gpt-image-2 + style reference ads + richer designBrief
 
-Today `/api/generate-graphics` returns text only, and `GraphicCard.tsx` renders one of 3 hardcoded CSS templates via `html-to-image`. We'll replace the visual output with real OpenAI image generations that incorporate the client's photos.
+## 1. Model swap — `src/routes/api/generate-ad-image.ts`
 
-## Step 1 — `src/routes/api/generate-graphics.ts` (concept step)
+- Replace both `model: "gpt-image-1"` strings (JSON generations call + multipart edits FormData) with `"gpt-image-2"`.
+- Keep `quality: "high"`, `size: "1024x1024"`, `n: 1`.
+- Do not add `input_fidelity` or `background: "transparent"`.
+- Current file has no HTML overlay / textZone logic — text-in-image is already the flow, so nothing to "revert". Text rendering just becomes reliable now.
+- Rewrite `buildPrompt` in **Hebrew** (see section 4).
 
-- Keep `gpt-4o`, `temperature: 0.7`, `response_format: json_object`.
-- Extend each item to include `designBrief` (English, rich visual concept). Each of the N items must be a **visually distinct** concept (composition, mood, palette usage from `brandColors`, typography style, photo placement).
-- Update the system prompt: add a section instructing the model to output English `designBrief` alongside Hebrew `headline` / `subheadline` / `cta`, and to make every concept different from the others in the batch.
-- Update the JSON shape example + `safeParseItems` to include `designBrief`.
-- Update the exported `GraphicText` type. No auth/DB changes.
+## 2. Reference-ad uploads (new asset kind)
 
-## Step 2 — new server route `src/routes/api/generate-ad-image.ts`
-
-TanStack file route `POST /api/generate-ad-image`. Body:
+**DB** — new migration:
+```sql
+ALTER TABLE public.client_assets
+  ADD COLUMN kind text NOT NULL DEFAULT 'photo'
+    CHECK (kind IN ('photo', 'reference'));
+CREATE INDEX client_assets_client_kind_idx
+  ON public.client_assets (client_id, kind);
 ```
-{ headline, subheadline, cta, designBrief,
-  clientName, clientIndustry, targetAudience, brandVibe,
-  brandColors: string[], assetUrls: string[] (0–3) }
-```
+Existing rows keep `kind='photo'`. No new grants (table already granted). Existing RLS policies still apply.
 
-Handler:
-1. Zod validate. Read `process.env.OPENAI_API_KEY` inside handler.
-2. Build the exact prompt string from the spec, interpolating all dynamic values (brandColors joined as `#hex, #hex`).
-3. If `assetUrls.length > 0`:
-   - `fetch` each URL in parallel, take up to 3, get `arrayBuffer` + content-type.
-   - Build `FormData` with `model=gpt-image-1`, `size=1024x1024`, `quality=high`, `prompt`, and each photo appended as `image[]` (Blob with filename).
-   - POST to `https://api.openai.com/v1/images/edits` with `Authorization: Bearer …` (no Content-Type — let fetch set the multipart boundary).
-4. Else: JSON POST to `https://api.openai.com/v1/images/generations` with the same model/size/quality/prompt.
-5. Return `{ b64: data[0].b64_json }`. On upstream error, forward `{ error }` with status 500 (or pass through 402/429).
-6. No explicit timeout wrapper — Cloudflare Worker fetch handles long upstreams; the client controls UX.
+**Hook** — `src/hooks/useClientAssets.ts`:
+- Accept second arg `kind: 'photo' | 'reference' = 'photo'`.
+- Include `kind` in the `select`, the `.eq("kind", kind)` filter, and the insert payload.
+- Cache key becomes `["client-assets", clientId, kind]`.
 
-Route lives outside `/api/public/` since it's called from the app (no signature required); it's an unauthenticated endpoint, matching the existing `generate-graphics` pattern.
+**Dialog** — `src/components/ClientDialog.tsx`:
+- Add a second `<Section title="דוגמאות עיצוב (סטייל רפרנס)">` under the business-assets section, wrapping a second `<AssetsUploader clientId={editingClientId} kind="reference" />`.
+- `AssetsUploader` gains a `kind` prop, forwards it to `useClientAssets(clientId, kind)`, and shows a short helper line in Hebrew explaining "העלה 1–3 מודעות מוגמרות שאהבת — הסגנון שלהן ישמש השראה לעיצוב."
 
-## Step 3 — rewire `src/components/CreateScreen.tsx`
+**Create screen** — `src/components/CreateScreen.tsx`:
+- Call `useClientAssets(selectedClientId, "photo")` for `assets` (unchanged) and add `useClientAssets(selectedClientId, "reference")` for `refs`.
+- In the assets summary panel, show two mini rows: photo count + reference count. Only photos remain required for `canGenerate`.
+- Pass up to 3 photo URLs + up to 3 reference URLs per concept to the image route (all concepts share the same references; photos rotate as today).
 
-- `GraphicItem` becomes `{ headline, subheadline, cta, status: 'loading'|'success'|'error', imageB64?: string, error?: string, retry: () => void }` (drop `backgroundUrl`, `photos`). Move the type into `GraphicCard.tsx` or a shared file — update both.
-- Flow:
-  1. `POST /api/generate-graphics` → get N concepts (with `designBrief`).
-  2. Seed `items` with N `status:'loading'` entries and switch preview to `success` immediately (so the grid + skeletons render).
-  3. Fire N **parallel** `/api/generate-ad-image` calls. Rotate `assetUrls` per index using the same deterministic slice logic used today (up to 3 photos per concept).
-  4. As each resolves, update just that index (`imageB64` + `status:'success'`) via functional `setItems`. On failure set `status:'error'` and store a bound `retry` callback that re-fires the single request.
-- Warning copy under the slider: "כל תמונה יכולה לקחת עד דקה" when count is high.
+## 3. `/api/generate-ad-image` input + prompt structure
 
-## Step 4 — `GraphicCard.tsx` + `SuccessGrid.tsx` + `PreviewPanel.tsx`
+- Extend `InputSchema` with `referenceUrls: z.array(z.string()).default([])` (cap to 3 in handler).
+- When at least one photo OR reference exists → use `/v1/images/edits`. Build the multipart body appending images in this exact order:
+  1. All photo blobs (`image[]`) — the "REAL photos".
+  2. All reference blobs (`image[]`) — the "STYLE REFERENCES".
+  This ordering is what the Hebrew prompt relies on ("התמונות הראשונות … התמונות האחרונות …").
+- When both arrays are empty → `/v1/images/generations` (no ordering issue).
+- Fallback: if `edits` returns non-OK, retry via `generations` (existing behaviour).
+- Response shape unchanged: `{ b64 }`.
 
-- **Remove**: `SplitLayout`, `PolaroidCollage`, `PremiumCard`, `GraphicCanvas`, `RENDER_SIZE`, `toPng` / `html-to-image` import, `PALETTES`, `pickTemplate`, `pickPalette`, font consts, `headlineFontSize`, `getPhotos`.
-- `GraphicCard` now renders one of three states inside the 1:1 tile:
-  - `loading`: skeleton with subtle shimmer + spinner + small caption "מייצר עיצוב…"
-  - `error`: error icon + Hebrew message + "נסה שוב" button calling `item.retry()`
-  - `success`: `<img src={`data:image/png;base64,${imageB64}`}>` filling the tile
-- Download button (visible on hover in `success` only) triggers a direct anchor download of the base64 PNG — no canvas capture.
-- `SuccessGrid` unchanged except it renders regardless of individual card status (grid appears as soon as concepts arrive). Header count reflects `items.length`.
-- `PreviewPanel`: `loading` state now only covers the brief concept-generation phase; once concepts arrive we render the grid with skeletons for individual images.
-- `html-to-image` dependency stays installed (harmless) unless we want to prune — leave it to avoid a lockfile churn; can remove later.
+## 4. Hebrew image prompt
 
-## Non-goals / untouched
-- Auth, `ClientsContext`, `useClientAssets`, Supabase, DB schema, secrets. `OPENAI_API_KEY` already configured.
-- `src/styles.css` font imports stay (harmless).
-- Amount cap stays at 10.
+`buildPrompt(input, hasPhotos, hasRefs)` returns a Hebrew string that:
+- Opens with business context: name, industry, target audience, brand vibe, brand colors.
+- States the visual concept from `designBrief` (already Hebrew after §5).
+- If `hasPhotos && hasRefs`:
+  > "התמונות הראשונות המצורפות הן צילומים אמיתיים של העסק — השתמש בהן כתוכן הצילומי של המודעה. התמונות האחרונות המצורפות הן דוגמאות סטייל של מודעות מוגמרות — העתק מהן את שפת העיצוב, צפיפות הלייאאוט, סגנון הטיפוגרפיה, באדג'ים, אלמנטים דקורטיביים וגימור כללי, אך אל תעתיק את הטקסטים שלהן ולא את הצילומים שלהן."
+- If only photos: keep the current "השתמש בצילומים…" line, drop the references paragraph.
+- If only references: symmetric — "התמונות המצורפות הן דוגמאות סטייל בלבד…"
+- Then the mandatory-text block:
+  > "המודעה חייבת לכלול את הטקסטים הבאים בעברית:
+  > כותרת ראשית (הגדולה, מודגשת): '{headline}'
+  > תת־כותרת (קטנה יותר, תומכת): '{subheadline}'
+  > כפתור CTA (מעוצב כבבירור ככפתור): '{cta}'
+  > הטקסטים חייבים להופיע בדיוק אות-באות כפי שנכתבו, בעברית תקינה מימין לשמאל, ללא שגיאות כתיב וללא המצאת מילים."
+- Closes with (verbatim per spec):
+  > "professional advertising design, clean visual hierarchy, premium finish, no invented logos or business names, no extra text beyond what was specified."
 
-## Notes / risks
-- gpt-image-1 returns base64 by default on the images endpoints; total payload for 10×~1.5MB images is ~15MB in memory — acceptable for this app but we won't persist them.
-- `images/edits` requires org verification on the OpenAI account; if the account isn't verified, edits fail. In that case we fall back automatically to `images/generations` (log a warning, no photo grounding).
+## 5. Richer designBrief — `src/routes/api/generate-graphics.ts`
+
+- Rewrite `buildSystemPrompt`: `designBrief` becomes a **Hebrew** art-director spec (5–8 lines each) required to cover, per concept:
+  1. כיוון אמנותי כללי ומצב־רוח.
+  2. קומפוזיציה מדויקת (איפה עומד הטקסט, איפה הצילום, האם יש בליד, יחסי שטח).
+  3. מערכת דקורטיבית ייחודית לקונספט — divider / באדג' / חותמת / טקסטורה (זהב, גיר, קראפט, נייר, וכו'). כל קונספט חייב טקסטורה שונה מהאחרים.
+  4. שורת 3–4 USPs עם אייקון + לייבל קצר כשמתאים (לא בכל קונספט חובה).
+  5. עיצוב כפתור CTA — צורה, מיקום, אייקון (כשהטקסט מזמין לפנייה בוואטסאפ → אייקון WhatsApp; אחרת חץ).
+  6. מיקרו־קופי תחתון בשורה אחת (למשל "מושלם לימי הולדת, אירועים פרטיים וחגיגות") — כשמתאים.
+- The N concepts must use **clearly different** art directions (state this constraint explicitly and give examples: "chalkboard rustic", "gold-foil luxury editorial", "kraft-paper deli", "modern minimal editorial", "vibrant collage", etc.).
+- Update JSON-shape example in the prompt + user message to reflect the richer `designBrief`. Parsing already accepts a string, so no code change to `safeParseItems`.
+- Bump `temperature` to `1.0` for wider stylistic variance across concepts.
+
+## 6. Types / small touches
+
+- `src/integrations/supabase/types.ts` is auto-generated — leave untouched; the new `kind` column will regenerate on next sync. Access it via `(row as any).kind` OR just re-select on the `client_assets` query where the return columns still match after `select("id,storage_path,kind")` (extra column is fine).
+- No changes to `GraphicCard` or `SuccessGrid` (they render whatever image the server returns).
+
+## Non-goals
+
+- No new dependencies. No auth/RLS changes. No storage-bucket changes (references reuse the existing `client-assets` bucket + `user_id/client_id/uuid.ext` path convention).
+- Cost warning copy in `CreateScreen` stays as-is ("עד דקה לתמונה").

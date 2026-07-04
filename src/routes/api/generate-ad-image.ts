@@ -12,40 +12,53 @@ const InputSchema = z.object({
   brandVibe: z.string().optional().default(""),
   brandColors: z.array(z.string()).optional().default([]),
   assetUrls: z.array(z.string()).optional().default([]),
+  referenceUrls: z.array(z.string()).optional().default([]),
 });
 
 type Input = z.infer<typeof InputSchema>;
 
-function buildPrompt(input: Input, hasPhotos: boolean) {
-  const clientName = input.clientName || "unspecified";
-  const industry = input.clientIndustry || "unspecified";
-  const audience = input.targetAudience || "general";
-  const vibe = input.brandVibe || "premium and modern";
-  const colors = input.brandColors.length ? input.brandColors.join(", ") : "elegant neutral palette";
+function buildPrompt(input: Input, hasPhotos: boolean, hasRefs: boolean) {
+  const clientName = input.clientName || "לא צוין";
+  const industry = input.clientIndustry || "לא צוין";
+  const audience = input.targetAudience || "קהל רחב";
+  const vibe = input.brandVibe || "פרימיום ומודרני";
+  const colors = input.brandColors.length
+    ? input.brandColors.join(", ")
+    : "פלטת ניטרלים אלגנטית";
   const brief =
     input.designBrief ||
-    "Premium editorial square ad with a clear hero photo area and a clean typographic block. Generous whitespace, luxury feel.";
-  const photoLine = hasPhotos
-    ? "Use the attached real photos of the business as the visual foundation of the design (crop, frame or collage them elegantly — do not distort faces or food)."
-    : "Compose a premium editorial layout appropriate to the business (no invented logos or photos of real people).";
+    "מודעה מרובעת פרימיום עם היררכיה טיפוגרפית ברורה, שטחים לבנים נדיבים ותחושת יוקרה.";
 
-  return `Design a premium, high-converting square (1:1) Facebook/Instagram ad for the following business.
+  let imagesLine = "";
+  if (hasPhotos && hasRefs) {
+    imagesLine =
+      "התמונות הראשונות המצורפות הן צילומים אמיתיים של העסק — השתמש בהן כתוכן הצילומי של המודעה (חתוך, מסגר או שלב אותן באלגנטיות, בלי לעוות פנים או מזון). התמונות האחרונות המצורפות הן דוגמאות סטייל של מודעות מוגמרות — העתק מהן את שפת העיצוב, צפיפות הלייאאוט, סגנון הטיפוגרפיה, באדג'ים, אלמנטים דקורטיביים וגימור כללי, אך אל תעתיק את הטקסטים שלהן ולא את הצילומים שלהן.";
+  } else if (hasPhotos) {
+    imagesLine =
+      "התמונות המצורפות הן צילומים אמיתיים של העסק — השתמש בהן כתוכן הצילומי של המודעה (חתוך, מסגר או שלב אותן באלגנטיות, בלי לעוות פנים או מזון).";
+  } else if (hasRefs) {
+    imagesLine =
+      "התמונות המצורפות הן דוגמאות סטייל של מודעות מוגמרות בלבד — העתק מהן את שפת העיצוב, צפיפות הלייאאוט, סגנון הטיפוגרפיה, באדג'ים, אלמנטים דקורטיביים וגימור כללי, אך אל תעתיק את הטקסטים שלהן ולא את הצילומים שלהן. הרכב לייאאוט מקורי מתאים לעסק, בלי להמציא לוגו או שם עסק.";
+  } else {
+    imagesLine =
+      "הרכב לייאאוט אדיטוריאלי פרימיום שמתאים לעסק (בלי להמציא לוגואים או צילומים של אנשים אמיתיים).";
+  }
 
-Business: ${clientName} — ${industry}. Target audience: ${audience}. Brand vibe: ${vibe}. Brand colors to use: ${colors}.
+  return `עצב מודעה מרובעת 1:1 באיכות גבוהה במיוחד לפייסבוק/אינסטגרם עבור העסק הבא.
 
-Visual concept: ${brief}
+עסק: ${clientName} — ${industry}. קהל יעד: ${audience}. טון וסגנון: ${vibe}. צבעי מותג לשילוב: ${colors}.
 
-${photoLine}
+קונספט ויזואלי (בריף ארט־דירקטור): ${brief}
 
-The ad MUST include the following Hebrew text, rendered EXACTLY letter-for-letter with correct right-to-left Hebrew spelling, no typos, no invented words:
+${imagesLine}
 
-- Main headline (largest, bold): '${input.headline}'
+המודעה חייבת לכלול את הטקסטים הבאים בעברית:
+כותרת ראשית (הגדולה, מודגשת): '${input.headline}'
+תת־כותרת (קטנה יותר, תומכת): '${input.subheadline}'
+כפתור CTA (מעוצב בבירור ככפתור): '${input.cta}'
+הטקסטים חייבים להופיע בדיוק אות-באות כפי שנכתבו, בעברית תקינה מימין לשמאל, ללא שגיאות כתיב וללא המצאת מילים.
 
-- Subheadline (smaller, supporting): '${input.subheadline}'
-
-- CTA button (clearly styled as a button): '${input.cta}'
-
-Design rules: clean visual hierarchy, generous margins, professional typography, luxury feel — NOT cheap or generic. Do not invent a logo or a business name. Do not add any other text. Text must be perfectly legible against the background.`;
+professional advertising design, clean visual hierarchy, premium finish, no invented logos or business names, no extra text beyond what was specified.`;
 }
 
 async function fetchAsBlob(url: string): Promise<{ blob: Blob; filename: string } | null> {
@@ -55,7 +68,7 @@ async function fetchAsBlob(url: string): Promise<{ blob: Blob; filename: string 
     const ct = r.headers.get("content-type") || "image/png";
     const buf = await r.arrayBuffer();
     const ext = ct.includes("jpeg") || ct.includes("jpg") ? "jpg" : ct.includes("webp") ? "webp" : "png";
-    return { blob: new Blob([buf], { type: ct }), filename: `photo.${ext}` };
+    return { blob: new Blob([buf], { type: ct }), filename: `image.${ext}` };
   } catch {
     return null;
   }
@@ -69,7 +82,7 @@ async function callGenerations(apiKey: string, prompt: string) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-image-1",
+      model: "gpt-image-2",
       prompt,
       size: "1024x1024",
       quality: "high",
@@ -94,32 +107,42 @@ export const Route = createFileRoute("/api/generate-ad-image")({
         }
 
         const assetUrls = input.assetUrls.slice(0, 3);
-        const prompt = buildPrompt(input, assetUrls.length > 0);
+        const referenceUrls = input.referenceUrls.slice(0, 3);
+        const hasAny = assetUrls.length > 0 || referenceUrls.length > 0;
 
         try {
           let res: Response;
-          if (assetUrls.length > 0) {
+          if (hasAny) {
+            // Order matters: photos first, references last (prompt refers to them as "first" / "last").
             const photos = (await Promise.all(assetUrls.map(fetchAsBlob))).filter(
               (p): p is { blob: Blob; filename: string } => p !== null,
             );
-            if (photos.length === 0) {
+            const refs = (await Promise.all(referenceUrls.map(fetchAsBlob))).filter(
+              (p): p is { blob: Blob; filename: string } => p !== null,
+            );
+            const prompt = buildPrompt(input, photos.length > 0, refs.length > 0);
+
+            if (photos.length === 0 && refs.length === 0) {
               res = await callGenerations(apiKey, prompt);
             } else {
               const fd = new FormData();
-              fd.append("model", "gpt-image-1");
+              fd.append("model", "gpt-image-2");
               fd.append("prompt", prompt);
               fd.append("size", "1024x1024");
               fd.append("quality", "high");
               fd.append("n", "1");
               for (const p of photos) {
-                fd.append("image[]", p.blob, p.filename);
+                fd.append("image[]", p.blob, `photo-${p.filename}`);
+              }
+              for (const r of refs) {
+                fd.append("image[]", r.blob, `reference-${r.filename}`);
               }
               res = await fetch("https://api.openai.com/v1/images/edits", {
                 method: "POST",
                 headers: { Authorization: `Bearer ${apiKey}` },
                 body: fd,
               });
-              // Fallback if edits fails (e.g. org not verified for gpt-image-1 edits)
+              // Fallback if edits fails (e.g. org verification required for edits).
               if (!res.ok) {
                 console.warn(
                   `[generate-ad-image] images/edits failed (${res.status}); falling back to generations`,
@@ -128,6 +151,7 @@ export const Route = createFileRoute("/api/generate-ad-image")({
               }
             }
           } else {
+            const prompt = buildPrompt(input, false, false);
             res = await callGenerations(apiKey, prompt);
           }
 

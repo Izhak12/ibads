@@ -27,7 +27,8 @@ export function CreateScreen() {
   const [items, setItems] = useState<GraphicItem[]>([]);
 
   const client = clients.find((c) => c.id === selectedClientId) ?? null;
-  const { assets } = useClientAssets(selectedClientId);
+  const { assets } = useClientAssets(selectedClientId, "photo");
+  const { assets: refs } = useClientAssets(selectedClientId, "reference");
   const accentColor = client?.brandColors?.[1] ?? client?.brandColors?.[0] ?? "#1E67FF";
   const fileNameBase = client?.name?.replace(/\s+/g, "-").toLowerCase() || "graphic";
 
@@ -36,6 +37,7 @@ export function CreateScreen() {
   const generateOneImage = async (
     concept: { headline: string; subheadline: string; cta: string; designBrief?: string },
     assetUrls: string[],
+    referenceUrls: string[],
     clientSnapshot: NonNullable<typeof client>,
     idx: number,
   ) => {
@@ -60,6 +62,7 @@ export function CreateScreen() {
             brandVibe: clientSnapshot.brandVibe,
             brandColors: clientSnapshot.brandColors,
             assetUrls,
+            referenceUrls,
           }),
         });
         const data = await res.json();
@@ -137,9 +140,11 @@ export function CreateScreen() {
       setItems(seeded);
       setPreview("success");
 
+      const referenceUrls = refs.slice(0, 3).map((r) => r.url);
+
       const clientSnapshot = client;
       void Promise.all(
-        texts.map((t, i) => generateOneImage(t, perItemAssets[i], clientSnapshot, i)),
+        texts.map((t, i) => generateOneImage(t, perItemAssets[i], referenceUrls, clientSnapshot, i)),
       );
     } catch (err) {
       console.error(err);
@@ -198,11 +203,11 @@ export function CreateScreen() {
 
               {/* Assets summary */}
               {client && (
-                <div className="mt-3 rounded-2xl border border-black/5 bg-black/[0.02] p-3">
+                <div className="mt-3 rounded-2xl border border-black/5 bg-black/[0.02] p-3 flex flex-col gap-2">
                   {assets.length === 0 ? (
                     <div className="flex items-center gap-2 text-xs text-black/60">
                       <ImageOff className="w-4 h-4" />
-                      <span>אין תמונות ללקוח.</span>
+                      <span>אין תמונות עסק.</span>
                       <button
                         onClick={() => openClientDialogFor(client.id)}
                         className="text-[#1E67FF] font-medium hover:underline"
@@ -213,7 +218,7 @@ export function CreateScreen() {
                   ) : (
                     <div className="flex items-center justify-between">
                       <div className="text-xs text-black/60">
-                        {assets.length} תמונות זמינות לרקע
+                        {assets.length} תמונות עסק
                       </div>
                       <div className="flex -space-x-2 rtl:space-x-reverse">
                         {assets.slice(0, 4).map((a) => (
@@ -227,6 +232,37 @@ export function CreateScreen() {
                       </div>
                     </div>
                   )}
+
+                  <div className="flex items-center justify-between border-t border-black/5 pt-2">
+                    <div className="text-xs text-black/60">
+                      {refs.length > 0
+                        ? `${refs.length} דוגמאות סטייל`
+                        : "ללא דוגמאות סטייל"}
+                      {refs.length === 0 && (
+                        <>
+                          {" · "}
+                          <button
+                            onClick={() => openClientDialogFor(client.id)}
+                            className="text-[#1E67FF] font-medium hover:underline"
+                          >
+                            הוסף
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    {refs.length > 0 && (
+                      <div className="flex -space-x-2 rtl:space-x-reverse">
+                        {refs.slice(0, 4).map((a) => (
+                          <img
+                            key={a.id}
+                            src={a.url}
+                            alt=""
+                            className="w-7 h-7 rounded-lg object-cover border border-white shadow-sm"
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
