@@ -1,54 +1,76 @@
-# Fix brief/design conflict — brief becomes marketing facts only
 
-## Problem
+# Design Gallery — Implementation Plan
 
-`/api/generate-brief` currently produces a 9-section **visual** creative brief (typography, lighting, camera, composition, motifs, color palette). That brief flows into `/api/generate-graphics`, whose per-concept `designBrief` ALSO defines art direction, alongside style-reference images. Three competing art directions → generic compromises from gpt-image-2.
+## Current State
+Generated graphics live only in `CreateScreen` React state (`items[].imageB64`) and vanish on refresh. There is no `generated_graphics` table and no storage bucket for outputs. `clients` and `client_assets` are already in place with RLS scoped to `auth.uid()`.
 
-Fix: brief = marketing facts (what/who/why). Visual direction stays owned by `designBrief` + reference images only.
+To ship a gallery we need to (a) persist every successful generation, then (b) build the UI to browse it.
 
-## 1. Rewrite `/api/generate-brief` (`src/routes/api/generate-brief.ts`)
+---
 
-Replace `SYSTEM_PROMPT` with a Hebrew marketing-brief spec, 150–250 words, sections in this exact order:
+## 1. Database & Storage (new migration)
 
-1. **מהות העסק והבידול** — 2–3 משפטים.
-2. **מה העסק מוכר** — רק מתוך `coreOffers`. אין להמציא מנות/שירותים/מחירים.
-3. **קהל היעד** — מי הם + 2–3 כאבים/רצונות מרכזיים.
-4. **USPs** — 3–5 ביטויים קצרים (2–4 מילים) שמתאימים כלייבלים לאייקונים במודעה. דוגמה: "שפית מקצועית באירוע", "תפריט עשיר ומגוון".
-5. **זוויות מסר** — 3–5 hooks מובחנים למודעות (רגשי, FOMO, social proof, פרימיום, פרקטי).
-6. **טון דיבור** — 1–2 משפטים.
-7. **ממה להימנע** — מילים/טענות/וייבים אסורים למותג הזה.
+New table `public.generated_graphics`:
+- `id uuid pk`
+- `user_id uuid` (FK-style, `auth.uid()`)
+- `client_id uuid not null references public.clients(id) on delete cascade`
+- `storage_path text not null` (in new bucket `generated-graphics`)
+- `headline text`, `subheadline text`, `cta text`, `design_brief text`
+- `created_at timestamptz default now()`
 
-Grounding rules appended verbatim to the system prompt:
+Grants: `authenticated` (SELECT/INSERT/DELETE), `service_role` ALL. RLS enabled, policies scoped to `auth.uid() = user_id` (select/insert/delete; no update needed).
 
-> "השתמש אך ורק בעובדות שסופקו. אסור להמציא מנות, שירותים, מחירים, ביקורות או נתונים. אם מידע חסר — פשוט השמט את השורה."
->
-> "אל תכתוב שום הנחיות ויזואליות — לא פונטים, לא תאורה, לא קומפוזיציה, לא צבעים ולא מוטיבים. אלה נקבעים בשלב אחר."
+New private storage bucket `generated-graphics` with the same per-user folder policies as `client-assets` (path prefix `{user_id}/{client_id}/…`).
 
-Output format: Hebrew Markdown-light with `**כותרת**` headers, no JSON, no code fences, no intros/outros — matches existing parsing (free text stored in `clients.brief`).
+No changes to `clients`, `client_assets`, auth, or onboarding.
 
-`buildUserPrompt`, input schema, endpoint path, model (`google/gemini-2.5-flash` via Lovable AI Gateway), and error handling stay unchanged.
+## 2. Persist on generation success
+In `CreateScreen.generateOneImage`, right after receiving `data.b64`:
+- decode base64 → `Blob`, upload to `generated-graphics/{user}/{client}/{uuid}.png`
+- insert row into `generated_graphics` with client + concept text
+- keep the existing in-memory `imageB64` behavior so `SuccessGrid` still renders instantly; persistence runs in the background and surfaces a toast on failure only.
 
-## 2. Update `/api/generate-graphics` system prompt (`src/routes/api/generate-graphics.ts`)
+New hook `src/hooks/useGeneratedGraphics.ts` (mirrors `useClientAssets`): `list(clientId)` returning signed URLs, `deleteGraphic(row)` (storage + row).
 
-In `buildSystemPrompt`, add an explicit input-usage clause near the top:
+## 3. Sidebar tab
+`src/components/Sidebar.tsx`: add third item `{ id: "gallery", label: "גלריית עיצובים", icon: FolderOpen }`. Extend `Tab` union. `src/routes/index.tsx`: render `<GalleryScreen />` when `tab === "gallery"` (kept inside existing `AnimatePresence`, no auth changes).
 
-> "בריף הלקוח הוא מקור העובדות והמסרים — שאב ממנו את הקופי, ה-USPs וזוויות המסר. את ההחלטות הוויזואליות קבע בעצמך ב-designBrief, בהתאם לצבעי המותג ולסגנון הרפרנסים."
+## 4. Gallery screen (new `src/components/GalleryScreen.tsx`)
+RTL, Apple-style, two internal views driven by local `selectedFolderId` state (no route change, keeps things simple and animated).
 
-Add two rules to the existing rules list:
+**Folder view** — responsive grid of client folders:
+- Each card: client initial/logo circle (using brand color), client name, subtitle `{count} עיצובים` from a `select client_id, count(*) group by client_id` query.
+- Empty state when a client has 0 saved graphics: muted card, no click.
+- Framer-motion stagger in on mount.
 
-- כל קונספט חייב לבחור **זווית מסר שונה** מרשימת "זוויות מסר" שבבריף (רגשי / FOMO / social proof / פרימיום / פרקטי וכו').
-- שורת ה-USPs בתוך `designBrief` חייבת להשתמש בלייבלים שמופיעים ברשימת ה-USPs של הבריף (לא להמציא חדשים).
+**Detail view** — animated slide/fade transition:
+- Sticky header with `← חזור לכל התיקיות` back button + client name + total count.
+- Responsive square grid of graphics (reuse tile styling from `GraphicCard` success state).
+- Hover overlay per tile with two circular icon buttons: **Download** (reuses the anchor-download pattern from `GraphicCard.handleDownload`, fetching the signed URL and saving as `{client-slug}-{n}.png`) and **Delete** (opens shadcn `AlertDialog` — "למחוק את העיצוב?" / "לא ניתן לשחזר" / cancel + confirm). On confirm: call `deleteGraphic`, optimistic React Query cache update, toast.
 
-No change to `InputSchema`, response shape, temperature, or the JSON example — `brief` field already carries the full text through.
+Loading + empty states inline (skeleton grid; "עדיין אין עיצובים שמורים ללקוח זה").
 
-## 3. Untouched
+## 5. Files touched
 
-- `ClientDialog` brief textarea: unchanged (already editable free text, generation button already calls `/api/generate-brief`).
-- `/api/generate-ad-image` prompt: unchanged.
-- DB, hooks, `CreateScreen`, `GraphicCard`, `SuccessGrid`: unchanged.
-- No new deps, no migrations.
+**New**
+- `supabase/migrations/<ts>_generated_graphics.sql` — table, grants, RLS, storage bucket + policies.
+- `src/hooks/useGeneratedGraphics.ts`
+- `src/components/GalleryScreen.tsx`
+- `src/components/GalleryFolderCard.tsx` (small, for cleanliness)
 
-## Files touched
+**Edited**
+- `src/components/Sidebar.tsx` — new tab entry.
+- `src/routes/index.tsx` — render `GalleryScreen` for the new tab.
+- `src/components/CreateScreen.tsx` — after successful image, upload + insert row (background, non-blocking).
 
-- `src/routes/api/generate-brief.ts` — rewrite `SYSTEM_PROMPT`.
-- `src/routes/api/generate-graphics.ts` — extend `buildSystemPrompt` with input-usage clause + 2 rules.
+**Untouched (no regression risk)**
+- Auth flow (`AuthScreen`, root session handling)
+- Client onboarding (`ClientDialog`, `ClientsContext`, `ClientsScreen`)
+- Generation API routes (`generate-brief`, `generate-graphics`, `generate-ad-image`)
+- `client_assets`, existing storage bucket
+- `SuccessGrid` / `GraphicCard` (gallery uses its own tile to keep hover actions isolated)
+
+## 6. Notes / decisions to confirm
+- Storing full PNGs (typically 1–3 MB at 1024²) in Storage rather than base64 in Postgres — cheaper and standard.
+- Gallery lives as a tab (in-app state), not its own route, to match the existing `create`/`clients` pattern.
+- Deletion is hard-delete (row + storage object). No soft-delete/trash. Let me know if you'd rather have a trash bin.
