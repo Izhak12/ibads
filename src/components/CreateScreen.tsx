@@ -22,6 +22,7 @@ const ease = [0.22, 1, 0.36, 1] as const;
 export function CreateScreen() {
   const { clients, selectedClientId, setSelectedClientId, openClientDialog, openClientDialogFor } =
     useClients();
+  const qc = useQueryClient();
   const [text, setText] = useState("");
   const [brief, setBrief] = useState("");
   const [count, setCount] = useState(3);
