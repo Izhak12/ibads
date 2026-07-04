@@ -37,6 +37,7 @@ export function CreateScreen() {
   const generateOneImage = async (
     concept: { headline: string; subheadline: string; cta: string; designBrief?: string },
     assetUrls: string[],
+    referenceUrls: string[],
     clientSnapshot: NonNullable<typeof client>,
     idx: number,
   ) => {
