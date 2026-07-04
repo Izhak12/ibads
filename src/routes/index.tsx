@@ -78,6 +78,7 @@ function Index() {
                 className="flex flex-1 min-w-0"
               >
                 {tab === "create" && <CreateScreen />}
+                {tab === "gallery" && <GalleryScreen />}
                 {tab === "clients" && <ClientsScreen />}
               </motion.div>
             </AnimatePresence>
