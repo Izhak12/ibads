@@ -62,6 +62,7 @@ export function CreateScreen() {
             brandVibe: clientSnapshot.brandVibe,
             brandColors: clientSnapshot.brandColors,
             assetUrls,
+            referenceUrls,
           }),
         });
         const data = await res.json();
