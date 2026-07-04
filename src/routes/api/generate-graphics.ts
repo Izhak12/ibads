@@ -18,6 +18,7 @@ export type GraphicText = {
   headline: string;
   subheadline: string;
   cta: string;
+  designBrief: string;
 };
 
 function buildSystemPrompt(input: Input) {
@@ -27,67 +28,34 @@ function buildSystemPrompt(input: Input) {
       .filter(Boolean)
       .join("\n") || "לא צוין";
   const optionalText = input.text || "אין";
+  const brandColors = input.brandColors.length ? input.brandColors.join(", ") : "not specified";
   const amountOfGraphics = input.amount;
 
-  return `אתה קופיריטר וגרפיקאי בכיר ומומחה לקריאייטיבים לממומן, עם ניסיון של 10 שנים בעיצוב מודעות שמביאות תוצאות.
+  return `אתה קופיריטר וגרפיקאי בכיר לקריאייטיבים ממומנים, וגם ארט־דירקטור שכותב בריפים ויזואליים באנגלית.
 
-אתה מתמחה ביצירת קונספטים למודעות בפייסבוק/אינסטגרם, תוך שמירה על היררכיית טקסט נכונה, UI נקי, וקופי שיווקי חד.
-
-המשימה:
-
-אני רוצה שתיצור עבורי קונספט וטקסטים לגרפיקה שיווקית ברזולוציה מרובעת 1:1, עבור העסק הבא:
-
+המשימה: לייצר ${amountOfGraphics} קונספטים מובחנים לחלוטין לגרפיקה מרובעת 1:1 עבור:
 שם העסק: ${clientName}
+בריף / תחום / קהל / טון: ${clientBrief}
+צבעי מותג: ${brandColors}
+טקסט חובה על הגרפיקה (אם צוין): ${optionalText}
 
-בריף העסק, תיאור השירות וקהל היעד: ${clientBrief}
+לכל קונספט אתה מחזיר 4 שדות:
+1. headline (עברית) – כותרת קצרה, חדה, שיווקית, בלי שגיאות.
+2. subheadline (עברית) – משפט תמיכה שמסביר את הערך.
+3. cta (עברית) – הנעה לפעולה ברורה (למשל "לפרטים והזמנות", "השאירו פרטים").
+4. designBrief (ENGLISH, 2-4 sentences) – a rich art-direction brief for THIS specific ad only. Must describe: composition & layout, mood/emotion, exactly how to use the brand colors (${brandColors}), typography style, and where/how the real client photo appears (hero crop, collage, framed inset, etc.). Every concept in the batch must be VISUALLY DISTINCT from the others – different composition, different mood, different photo treatment. No two designBriefs may describe the same layout.
 
-טקסט חובה לשילוב על הגרפיקה (אם צוין): ${optionalText}
+חוקים:
+- אסור להמציא שם עסק או לוגו.
+- אסור טקסט עברי עם שגיאות.
+- אסור טון זול / הנחות / קהל מחפש מחיר. הטון תמיד יוקרתי־נגיש.
+- כל קונספט מרגיש כמו מודעת פרימיום, לא תבנית AI.
 
-סגנון וטון דיבור:
-
-הקופי צריך להיות ברור, חד, שיווקי ולא מתאמץ. לדבר בשפה פשוטה אבל יוקרתית, לא עממית מדי ולא מתנשאת.
-
-המסר צריך לגרום ללקוח להבין את הערך מיד. אפשר להשתמש בסגנונות שונים בכל פעם: יוקרתי, אלגנטי, אותנטי, רגשי, מודרני, או כל קונספט שמתאים למודעה.
-
-מבנה הטקסט על הגרפיקה:
-
-בכל גרפיקה חייבים להיות:
-
-1. כותרת חזקה וברורה: משפט קצר שתופס את העין ומדבר ישירות לקהל.
-
-2. תת־כותרת / חיזוק המסר: משפט שמסביר בקצרה את הערך של השירות.
-
-3. הנעה לפעולה (CTA) ברורה: למשל: 'לפרטים והזמנות לחצו כאן', 'השאירו פרטים ונחזור אליכם'.
-
-גבולות גזרה חשובים:
-
-אסור להמציא שם עסק.
-
-אסור להמציא לוגו.
-
-אסור לשים טקסט עם שגיאות כתיב.
-
-אסור להשתמש במילים גבוהות מדי או מסובכות.
-
-אסור לשכוח הנעה לפעולה.
-
-אסור שהטקסט ייראה כמו תבנית גנרית או AI זול.
-
-אסור שהמודעה תרגיש כאילו היא פונה לקהל שמחפש מחיר זול, אלא לקהל שיודע להעריך איכות.
-
-CRITICAL FORMATTING REQUIREMENT (DO NOT IGNORE):
-
-The application UI will overlay your text onto real client photos. You MUST output strictly as a JSON object with an "items" array containing exactly ${amountOfGraphics} objects. Do not wrap the JSON in markdown blocks (no \`\`\`json) and do not add any conversational text.
-
-Format exactly like this:
-
+פורמט פלט:
+JSON object בלבד, בלי markdown ובלי טקסט נלווה, בצורה הבאה:
 {
   "items": [
-    {
-      "headline": "הכותרת הראשית כאן",
-      "subheadline": "תת הכותרת כאן",
-      "cta": "טקסט הנעה לפעולה כאן"
-    }
+    { "headline": "…", "subheadline": "…", "cta": "…", "designBrief": "…" }
   ]
 }`;
 }
@@ -98,7 +66,6 @@ function safeParseItems(raw: string, amount: number): GraphicText[] {
     .replace(/^```\s*/i, "")
     .replace(/```\s*$/i, "")
     .trim();
-  // Model may return either {items:[...]} or a bare array [...]
   const parsed = JSON.parse(cleaned) as unknown;
   const items = Array.isArray(parsed)
     ? parsed
@@ -111,6 +78,7 @@ function safeParseItems(raw: string, amount: number): GraphicText[] {
       headline: String(o.headline ?? "").trim(),
       subheadline: String(o.subheadline ?? "").trim(),
       cta: String(o.cta ?? "").trim() || "לפרטים נוספים",
+      designBrief: String(o.designBrief ?? o.design_brief ?? "").trim(),
     };
   });
 }
@@ -148,13 +116,13 @@ export const Route = createFileRoute("/api/generate-graphics")({
               },
               body: JSON.stringify({
                 model: "gpt-4o",
-                temperature: 0.7,
+                temperature: 0.9,
                 response_format: { type: "json_object" },
                 messages: [
                   { role: "system", content: buildSystemPrompt(input) },
                   {
                     role: "user",
-                    content: `צור בדיוק ${input.amount} וריאציות שונות זו מזו בזווית ובניסוח. החזר JSON object בפורמט: {"items":[{"headline":"...","subheadline":"...","cta":"..."}]}`,
+                    content: `צור בדיוק ${input.amount} וריאציות שונות זו מזו – כל אחת עם designBrief באנגלית שמתאר קונספט ויזואלי ייחודי. החזר JSON object בפורמט: {"items":[{"headline":"...","subheadline":"...","cta":"...","designBrief":"..."}]}`,
                   },
                 ],
               }),
@@ -169,13 +137,14 @@ export const Route = createFileRoute("/api/generate-graphics")({
             choices?: Array<{ message?: { content?: string } }>;
           };
           const raw = json.choices?.[0]?.message?.content ?? "";
-          let items = safeParseItems(raw, input.amount);
-          // Pad with defaults if AI returned fewer items than requested
+          const items = safeParseItems(raw, input.amount);
           while (items.length < input.amount) {
             items.push({
               headline: input.clientName || "העסק שלך",
               subheadline: input.text || input.brandVibe || "",
               cta: "לפרטים נוספים",
+              designBrief:
+                "Premium square social ad. Elegant editorial layout with the client photo as a large hero on one half and a clean typographic block on the other. Use the brand colors as accents on a neutral background. Modern sans-serif Hebrew typography, generous whitespace, luxury feel.",
             });
           }
           return Response.json({ items });

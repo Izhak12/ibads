@@ -33,6 +33,56 @@ export function CreateScreen() {
 
   const canGenerate = !!client && assets.length > 0 && preview !== "loading";
 
+  const generateOneImage = async (
+    concept: { headline: string; subheadline: string; cta: string; designBrief?: string },
+    assetUrls: string[],
+    clientSnapshot: NonNullable<typeof client>,
+    idx: number,
+  ) => {
+    const runOnce = async () => {
+      setItems((prev) =>
+        prev.map((it, i) =>
+          i === idx ? { ...it, status: "loading", error: undefined } : it,
+        ),
+      );
+      try {
+        const res = await fetch("/api/generate-ad-image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            headline: concept.headline,
+            subheadline: concept.subheadline,
+            cta: concept.cta,
+            designBrief: concept.designBrief ?? "",
+            clientName: clientSnapshot.name,
+            clientIndustry: clientSnapshot.industry,
+            targetAudience: clientSnapshot.targetAudience,
+            brandVibe: clientSnapshot.brandVibe,
+            brandColors: clientSnapshot.brandColors,
+            assetUrls,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data?.b64) throw new Error(data?.error ?? "שגיאה ביצירת התמונה");
+        setItems((prev) =>
+          prev.map((it, i) =>
+            i === idx ? { ...it, status: "success", imageB64: data.b64 } : it,
+          ),
+        );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "שגיאה ביצירת התמונה";
+        setItems((prev) =>
+          prev.map((it, i) =>
+            i === idx
+              ? { ...it, status: "error", error: message, retry: runOnce }
+              : it,
+          ),
+        );
+      }
+    };
+    await runOnce();
+  };
+
   const handleGenerate = async () => {
     if (!client) {
       toast.error("בחר לקוח לפני יצירת גרפיקות");
@@ -63,24 +113,34 @@ export function CreateScreen() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? "שגיאה");
-      const texts = data.items as Array<{ headline: string; subheadline: string; cta: string }>;
-      const composed: GraphicItem[] = texts.map((t, i) => {
-        // Deterministic photo rotation per item (up to 3 photos)
-        const photos: string[] = [];
+      const texts = data.items as Array<{
+        headline: string;
+        subheadline: string;
+        cta: string;
+        designBrief?: string;
+      }>;
+
+      const perItemAssets: string[][] = texts.map((_, i) => {
+        const out: string[] = [];
         const n = Math.min(3, assets.length);
-        for (let k = 0; k < n; k++) {
-          photos.push(assets[(i + k) % assets.length].url);
-        }
-        return {
-          headline: t.headline,
-          subheadline: t.subheadline,
-          cta: t.cta,
-          backgroundUrl: photos[0],
-          photos,
-        };
+        for (let k = 0; k < n; k++) out.push(assets[(i + k) % assets.length].url);
+        return out;
       });
-      setItems(composed);
+
+      const seeded: GraphicItem[] = texts.map((t) => ({
+        headline: t.headline,
+        subheadline: t.subheadline,
+        cta: t.cta,
+        designBrief: t.designBrief,
+        status: "loading",
+      }));
+      setItems(seeded);
       setPreview("success");
+
+      const clientSnapshot = client;
+      void Promise.all(
+        texts.map((t, i) => generateOneImage(t, perItemAssets[i], clientSnapshot, i)),
+      );
     } catch (err) {
       console.error(err);
       toast.error("שגיאה ביצירת הגרפיקות", {
@@ -213,6 +273,9 @@ export function CreateScreen() {
               <div className="flex justify-between text-[11px] text-black/40 tabular-nums">
                 <span>1</span>
                 <span>10</span>
+              </div>
+              <div className="text-[11px] text-black/50 leading-relaxed" dir="rtl">
+                יצירת כל תמונה יכולה לקחת עד דקה — התמונות מופיעות בהדרגה במסך התצוגה.
               </div>
             </div>
 

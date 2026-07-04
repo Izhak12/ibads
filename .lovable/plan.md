@@ -1,63 +1,64 @@
-# Backend + Canvas Template Overhaul
+# Pipeline rebuild: gpt-image-1 as the actual designer
 
-## 1. Backend (`src/routes/api/generate-graphics.ts`)
+Today `/api/generate-graphics` returns text only, and `GraphicCard.tsx` renders one of 3 hardcoded CSS templates via `html-to-image`. We'll replace the visual output with real OpenAI image generations that incorporate the client's photos.
 
-Current state already satisfies the request — verify and leave logic intact:
+## Step 1 — `src/routes/api/generate-graphics.ts` (concept step)
 
-- `model: "gpt-4o"` ✓
-- `temperature: 0.7` ✓
-- `response_format: { type: "json_object" }` ✓
-- Strict Hebrew system prompt with headline/subheadline/cta contract ✓
-- `safeParseItems` tolerates both `{items:[...]}` and bare `[...]`, pads missing items ✓
+- Keep `gpt-4o`, `temperature: 0.7`, `response_format: json_object`.
+- Extend each item to include `designBrief` (English, rich visual concept). Each of the N items must be a **visually distinct** concept (composition, mood, palette usage from `brandColors`, typography style, photo placement).
+- Update the system prompt: add a section instructing the model to output English `designBrief` alongside Hebrew `headline` / `subheadline` / `cta`, and to make every concept different from the others in the batch.
+- Update the JSON shape example + `safeParseItems` to include `designBrief`.
+- Update the exported `GraphicText` type. No auth/DB changes.
 
-Only change: tighten the user message so the JSON shape matches the schema line in the system prompt (system prompt shows a bare array, request asks for `{items:[]}` — align both on `{items:[...]}` to prevent occasional shape drift). No functional refactor beyond that.
+## Step 2 — new server route `src/routes/api/generate-ad-image.ts`
 
-No changes to Auth, Clients context, `useClientAssets`, or DB fetching — this route is standalone and the request/response contract already used by `CreateScreen.tsx` stays identical.
+TanStack file route `POST /api/generate-ad-image`. Body:
+```
+{ headline, subheadline, cta, designBrief,
+  clientName, clientIndustry, targetAudience, brandVibe,
+  brandColors: string[], assetUrls: string[] (0–3) }
+```
 
-## 2. Frontend Canvas (`src/components/GraphicCard.tsx`)
+Handler:
+1. Zod validate. Read `process.env.OPENAI_API_KEY` inside handler.
+2. Build the exact prompt string from the spec, interpolating all dynamic values (brandColors joined as `#hex, #hex`).
+3. If `assetUrls.length > 0`:
+   - `fetch` each URL in parallel, take up to 3, get `arrayBuffer` + content-type.
+   - Build `FormData` with `model=gpt-image-1`, `size=1024x1024`, `quality=high`, `prompt`, and each photo appended as `image[]` (Blob with filename).
+   - POST to `https://api.openai.com/v1/images/edits` with `Authorization: Bearer …` (no Content-Type — let fetch set the multipart boundary).
+4. Else: JSON POST to `https://api.openai.com/v1/images/generations` with the same model/size/quality/prompt.
+5. Return `{ b64: data[0].b64_json }`. On upstream error, forward `{ error }` with status 500 (or pass through 402/429).
+6. No explicit timeout wrapper — Cloudflare Worker fetch handles long upstreams; the client controls UX.
 
-Rewrite the three templates with strict containment so nothing overflows the 1080×1080 canvas and the CTA can never be clipped.
+Route lives outside `/api/public/` since it's called from the app (no signature required); it's an unauthenticated endpoint, matching the existing `generate-graphics` pattern.
 
-### Shared container rules
-- Outer wrapper keeps `aspect-ratio: 1 / 1`, `overflow: hidden`, and the existing scaled 1080px canvas — unchanged.
-- Every template root uses `position: absolute; inset: 0; overflow: hidden; box-sizing: border-box` and an inner **safe area** with `padding: 64px` (≈40px scaled), `display: flex`, `flex-direction: column` so text blocks flow instead of using magic `top/bottom` offsets that clip.
-- Every text node: `min-width: 0`, `max-width: 100%`, `overflow-wrap: anywhere`, `word-break: break-word`. CTA uses `flex-shrink: 0` and its own row wrapper with `margin-top: auto` so it is always anchored above the bottom padding, never inside a fixed-height parent that can crop it.
-- Headline uses `clamp`-style sizing via a helper that picks font-size from headline length (e.g. ≤18 chars → 104px, ≤32 → 84px, else 64px) so long Hebrew strings don't overflow.
-- Fonts: Heebo + Rubik already imported via `@fontsource` in `src/styles.css` — no new imports.
+## Step 3 — rewire `src/components/CreateScreen.tsx`
 
-### Template A — Split Layout (replaces "Luxury Premium")
-- Two vertical regions inside a single flex column: top 55% hero photo (`object-fit: cover`), bottom 45% solid block (`#0F1F38` navy or cream depending on palette rotation).
-- Text block is a flex column with `justify-content: center`, `gap: 20px`, right-aligned RTL. No fixed heights on text — `flex: 1` region grows, CTA sits at natural end.
-- CTA: gold `#D4AF7A` pill, `border-radius: 4px`, `padding: 18px 44px`, `align-self: flex-end`.
-- Thin gold hairline divider under headline (140×1px).
+- `GraphicItem` becomes `{ headline, subheadline, cta, status: 'loading'|'success'|'error', imageB64?: string, error?: string, retry: () => void }` (drop `backgroundUrl`, `photos`). Move the type into `GraphicCard.tsx` or a shared file — update both.
+- Flow:
+  1. `POST /api/generate-graphics` → get N concepts (with `designBrief`).
+  2. Seed `items` with N `status:'loading'` entries and switch preview to `success` immediately (so the grid + skeletons render).
+  3. Fire N **parallel** `/api/generate-ad-image` calls. Rotate `assetUrls` per index using the same deterministic slice logic used today (up to 3 photos per concept).
+  4. As each resolves, update just that index (`imageB64` + `status:'success'`) via functional `setItems`. On failure set `status:'error'` and store a bound `retry` callback that re-fires the single request.
+- Warning copy under the slider: "כל תמונה יכולה לקחת עד דקה" when count is high.
 
-### Template B — Polaroid Collage (replaces "Chalkboard Market")
-- Dark chalkboard background retained, but polaroids are absolutely positioned **inside a bounded 1080×620 upper stage** (`position: absolute; top: 0; left: 0; right: 0; height: 620px; overflow: hidden`) so rotated polaroids can never bleed past the canvas edge.
-- Up to 3 polaroids with clamped sizes (`min(360px, 34%)`) and rotations `-6°`, `4°`, `-2°`; `will-change: transform` to keep shadows crisp in `html-to-image`.
-- Bottom 460px is a solid text region with 64px padding, flex-column, `justify-content: flex-end`, `gap: 20px`. Headline uses gold gradient with fallback `color`.
-- CTA cream stamp, `flex-shrink: 0`, `align-self: flex-end`, rotated `-1.5°`.
+## Step 4 — `GraphicCard.tsx` + `SuccessGrid.tsx` + `PreviewPanel.tsx`
 
-### Template C — Premium Centered Card (replaces "Dynamic Collage")
-- Warm base (`#F2ECE1`) with a full-bleed hero photo behind a centered translucent card.
-- Card: `width: 78%; max-width: 820px; margin: auto; padding: 56px 48px; background: rgba(255,249,240,0.96); border-radius: 24px; box-shadow: 0 40px 80px -20px rgba(15,31,56,0.35)`.
-- Card is a flex column, right-aligned RTL, `gap: 22px`. No absolute positioning inside — text and CTA flow naturally so nothing clips regardless of copy length.
-- Small navy accent bar (`4px × 48px`) above headline instead of the previous sticker/badge chaos.
-- CTA: navy pill with `ArrowLeft` icon, `border-radius: 999px`, `padding: 18px 36px`, `align-self: flex-end`, no rotation (prevents shadow-clip inside the card).
-- Removes: diagonal accent band, organic blob photo, tilted secondary photo, rotated "חדש" sticker — these were the main sources of the boxy/overflow feel.
+- **Remove**: `SplitLayout`, `PolaroidCollage`, `PremiumCard`, `GraphicCanvas`, `RENDER_SIZE`, `toPng` / `html-to-image` import, `PALETTES`, `pickTemplate`, `pickPalette`, font consts, `headlineFontSize`, `getPhotos`.
+- `GraphicCard` now renders one of three states inside the 1:1 tile:
+  - `loading`: skeleton with subtle shimmer + spinner + small caption "מייצר עיצוב…"
+  - `error`: error icon + Hebrew message + "נסה שוב" button calling `item.retry()`
+  - `success`: `<img src={`data:image/png;base64,${imageB64}`}>` filling the tile
+- Download button (visible on hover in `success` only) triggers a direct anchor download of the base64 PNG — no canvas capture.
+- `SuccessGrid` unchanged except it renders regardless of individual card status (grid appears as soon as concepts arrive). Header count reflects `items.length`.
+- `PreviewPanel`: `loading` state now only covers the brief concept-generation phase; once concepts arrive we render the grid with skeletons for individual images.
+- `html-to-image` dependency stays installed (harmless) unless we want to prune — leave it to avoid a lockfile churn; can remove later.
 
-### Palette rotation
-Keep `pickTemplate(index) = index % 3`. Add a parallel `pickPalette(index)` returning navy/cream/sage for Template A and C so consecutive graphics don't repeat the same colorway.
+## Non-goals / untouched
+- Auth, `ClientsContext`, `useClientAssets`, Supabase, DB schema, secrets. `OPENAI_API_KEY` already configured.
+- `src/styles.css` font imports stay (harmless).
+- Amount cap stays at 10.
 
-### Export fidelity
-- `html-to-image` config unchanged (1080×1080, `pixelRatio: 1`).
-- Continue awaiting `document.fonts.ready` before capture.
-- Every `<img>` keeps `crossOrigin="anonymous"` and `display: block`.
-
-## 3. Non-goals / regression guard
-- No changes to `CreateScreen.tsx` data flow, `GraphicItem` type, `useClientAssets`, `ClientsContext`, `AuthScreen`, or any Supabase code.
-- No new dependencies.
-- No changes to `PreviewPanel`, `SuccessGrid`, or the download button UX.
-
-## Files touched
-1. `src/routes/api/generate-graphics.ts` — align user-message JSON shape hint with system prompt (one-line change).
-2. `src/components/GraphicCard.tsx` — full rewrite of the three template components plus a shared `SafeCanvas` wrapper and headline-size helper. `GraphicCard` shell, scaling logic, and download handler stay as-is.
+## Notes / risks
+- gpt-image-1 returns base64 by default on the images endpoints; total payload for 10×~1.5MB images is ~15MB in memory — acceptable for this app but we won't persist them.
+- `images/edits` requires org verification on the OpenAI account; if the account isn't verified, edits fail. In that case we fall back automatically to `images/generations` (log a warning, no photo grounding).
