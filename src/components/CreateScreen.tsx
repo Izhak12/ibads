@@ -203,11 +203,11 @@ export function CreateScreen() {
 
               {/* Assets summary */}
               {client && (
-                <div className="mt-3 rounded-2xl border border-black/5 bg-black/[0.02] p-3">
+                <div className="mt-3 rounded-2xl border border-black/5 bg-black/[0.02] p-3 flex flex-col gap-2">
                   {assets.length === 0 ? (
                     <div className="flex items-center gap-2 text-xs text-black/60">
                       <ImageOff className="w-4 h-4" />
-                      <span>אין תמונות ללקוח.</span>
+                      <span>אין תמונות עסק.</span>
                       <button
                         onClick={() => openClientDialogFor(client.id)}
                         className="text-[#1E67FF] font-medium hover:underline"
@@ -218,7 +218,7 @@ export function CreateScreen() {
                   ) : (
                     <div className="flex items-center justify-between">
                       <div className="text-xs text-black/60">
-                        {assets.length} תמונות זמינות לרקע
+                        {assets.length} תמונות עסק
                       </div>
                       <div className="flex -space-x-2 rtl:space-x-reverse">
                         {assets.slice(0, 4).map((a) => (
@@ -232,6 +232,37 @@ export function CreateScreen() {
                       </div>
                     </div>
                   )}
+
+                  <div className="flex items-center justify-between border-t border-black/5 pt-2">
+                    <div className="text-xs text-black/60">
+                      {refs.length > 0
+                        ? `${refs.length} דוגמאות סטייל`
+                        : "ללא דוגמאות סטייל"}
+                      {refs.length === 0 && (
+                        <>
+                          {" · "}
+                          <button
+                            onClick={() => openClientDialogFor(client.id)}
+                            className="text-[#1E67FF] font-medium hover:underline"
+                          >
+                            הוסף
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    {refs.length > 0 && (
+                      <div className="flex -space-x-2 rtl:space-x-reverse">
+                        {refs.slice(0, 4).map((a) => (
+                          <img
+                            key={a.id}
+                            src={a.url}
+                            alt=""
+                            className="w-7 h-7 rounded-lg object-cover border border-white shadow-sm"
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
