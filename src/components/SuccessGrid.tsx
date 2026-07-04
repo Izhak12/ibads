@@ -40,16 +40,12 @@ export function SuccessGrid({
         </button>
       </div>
 
-      <div className="flex-1 min-h-0 flex items-center justify-center">
+      <div className="flex-1 min-h-0 overflow-y-auto">
         <div
-          className="grid gap-3 h-full w-full"
+          className="grid gap-4 w-full mx-auto"
           style={{
             gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-            gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
-            aspectRatio: `${cols} / ${rows}`,
-            maxHeight: "100%",
-            maxWidth: "100%",
-            margin: "0 auto",
+            gridAutoRows: "auto",
           }}
         >
           {items.map((item, i) => (
