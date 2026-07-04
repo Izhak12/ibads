@@ -53,13 +53,7 @@ export function SuccessGrid({
           }}
         >
           {items.map((item, i) => (
-            <GraphicCard
-              key={i}
-              item={item}
-              index={i}
-              accentColor={accentColor}
-              fileNameBase={fileNameBase}
-            />
+            <GraphicCard key={i} item={item} index={i} fileNameBase={fileNameBase} />
           ))}
         </div>
       </div>
