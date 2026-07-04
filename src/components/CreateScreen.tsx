@@ -140,9 +140,11 @@ export function CreateScreen() {
       setItems(seeded);
       setPreview("success");
 
+      const referenceUrls = refs.slice(0, 3).map((r) => r.url);
+
       const clientSnapshot = client;
       void Promise.all(
-        texts.map((t, i) => generateOneImage(t, perItemAssets[i], clientSnapshot, i)),
+        texts.map((t, i) => generateOneImage(t, perItemAssets[i], referenceUrls, clientSnapshot, i)),
       );
     } catch (err) {
       console.error(err);
