@@ -426,10 +426,16 @@ function Section({
 const MAX_FILE_MB = 10;
 const ACCEPT = ["image/jpeg", "image/png", "image/webp"];
 
-function AssetsUploader({ clientId }: { clientId: string | null }) {
+function AssetsUploader({
+  clientId,
+  kind = "photo",
+}: {
+  clientId: string | null;
+  kind?: "photo" | "reference";
+}) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const { assets, isLoading, uploading, uploadFiles, deleteAsset } =
-    useClientAssets(clientId);
+    useClientAssets(clientId, kind);
   const [dragOver, setDragOver] = useState(false);
 
   if (!clientId) {
