@@ -1,87 +1,54 @@
-# Upgrade: gpt-image-2 + style reference ads + richer designBrief
+# Fix brief/design conflict — brief becomes marketing facts only
 
-## 1. Model swap — `src/routes/api/generate-ad-image.ts`
+## Problem
 
-- Replace both `model: "gpt-image-1"` strings (JSON generations call + multipart edits FormData) with `"gpt-image-2"`.
-- Keep `quality: "high"`, `size: "1024x1024"`, `n: 1`.
-- Do not add `input_fidelity` or `background: "transparent"`.
-- Current file has no HTML overlay / textZone logic — text-in-image is already the flow, so nothing to "revert". Text rendering just becomes reliable now.
-- Rewrite `buildPrompt` in **Hebrew** (see section 4).
+`/api/generate-brief` currently produces a 9-section **visual** creative brief (typography, lighting, camera, composition, motifs, color palette). That brief flows into `/api/generate-graphics`, whose per-concept `designBrief` ALSO defines art direction, alongside style-reference images. Three competing art directions → generic compromises from gpt-image-2.
 
-## 2. Reference-ad uploads (new asset kind)
+Fix: brief = marketing facts (what/who/why). Visual direction stays owned by `designBrief` + reference images only.
 
-**DB** — new migration:
-```sql
-ALTER TABLE public.client_assets
-  ADD COLUMN kind text NOT NULL DEFAULT 'photo'
-    CHECK (kind IN ('photo', 'reference'));
-CREATE INDEX client_assets_client_kind_idx
-  ON public.client_assets (client_id, kind);
-```
-Existing rows keep `kind='photo'`. No new grants (table already granted). Existing RLS policies still apply.
+## 1. Rewrite `/api/generate-brief` (`src/routes/api/generate-brief.ts`)
 
-**Hook** — `src/hooks/useClientAssets.ts`:
-- Accept second arg `kind: 'photo' | 'reference' = 'photo'`.
-- Include `kind` in the `select`, the `.eq("kind", kind)` filter, and the insert payload.
-- Cache key becomes `["client-assets", clientId, kind]`.
+Replace `SYSTEM_PROMPT` with a Hebrew marketing-brief spec, 150–250 words, sections in this exact order:
 
-**Dialog** — `src/components/ClientDialog.tsx`:
-- Add a second `<Section title="דוגמאות עיצוב (סטייל רפרנס)">` under the business-assets section, wrapping a second `<AssetsUploader clientId={editingClientId} kind="reference" />`.
-- `AssetsUploader` gains a `kind` prop, forwards it to `useClientAssets(clientId, kind)`, and shows a short helper line in Hebrew explaining "העלה 1–3 מודעות מוגמרות שאהבת — הסגנון שלהן ישמש השראה לעיצוב."
+1. **מהות העסק והבידול** — 2–3 משפטים.
+2. **מה העסק מוכר** — רק מתוך `coreOffers`. אין להמציא מנות/שירותים/מחירים.
+3. **קהל היעד** — מי הם + 2–3 כאבים/רצונות מרכזיים.
+4. **USPs** — 3–5 ביטויים קצרים (2–4 מילים) שמתאימים כלייבלים לאייקונים במודעה. דוגמה: "שפית מקצועית באירוע", "תפריט עשיר ומגוון".
+5. **זוויות מסר** — 3–5 hooks מובחנים למודעות (רגשי, FOMO, social proof, פרימיום, פרקטי).
+6. **טון דיבור** — 1–2 משפטים.
+7. **ממה להימנע** — מילים/טענות/וייבים אסורים למותג הזה.
 
-**Create screen** — `src/components/CreateScreen.tsx`:
-- Call `useClientAssets(selectedClientId, "photo")` for `assets` (unchanged) and add `useClientAssets(selectedClientId, "reference")` for `refs`.
-- In the assets summary panel, show two mini rows: photo count + reference count. Only photos remain required for `canGenerate`.
-- Pass up to 3 photo URLs + up to 3 reference URLs per concept to the image route (all concepts share the same references; photos rotate as today).
+Grounding rules appended verbatim to the system prompt:
 
-## 3. `/api/generate-ad-image` input + prompt structure
+> "השתמש אך ורק בעובדות שסופקו. אסור להמציא מנות, שירותים, מחירים, ביקורות או נתונים. אם מידע חסר — פשוט השמט את השורה."
+>
+> "אל תכתוב שום הנחיות ויזואליות — לא פונטים, לא תאורה, לא קומפוזיציה, לא צבעים ולא מוטיבים. אלה נקבעים בשלב אחר."
 
-- Extend `InputSchema` with `referenceUrls: z.array(z.string()).default([])` (cap to 3 in handler).
-- When at least one photo OR reference exists → use `/v1/images/edits`. Build the multipart body appending images in this exact order:
-  1. All photo blobs (`image[]`) — the "REAL photos".
-  2. All reference blobs (`image[]`) — the "STYLE REFERENCES".
-  This ordering is what the Hebrew prompt relies on ("התמונות הראשונות … התמונות האחרונות …").
-- When both arrays are empty → `/v1/images/generations` (no ordering issue).
-- Fallback: if `edits` returns non-OK, retry via `generations` (existing behaviour).
-- Response shape unchanged: `{ b64 }`.
+Output format: Hebrew Markdown-light with `**כותרת**` headers, no JSON, no code fences, no intros/outros — matches existing parsing (free text stored in `clients.brief`).
 
-## 4. Hebrew image prompt
+`buildUserPrompt`, input schema, endpoint path, model (`google/gemini-2.5-flash` via Lovable AI Gateway), and error handling stay unchanged.
 
-`buildPrompt(input, hasPhotos, hasRefs)` returns a Hebrew string that:
-- Opens with business context: name, industry, target audience, brand vibe, brand colors.
-- States the visual concept from `designBrief` (already Hebrew after §5).
-- If `hasPhotos && hasRefs`:
-  > "התמונות הראשונות המצורפות הן צילומים אמיתיים של העסק — השתמש בהן כתוכן הצילומי של המודעה. התמונות האחרונות המצורפות הן דוגמאות סטייל של מודעות מוגמרות — העתק מהן את שפת העיצוב, צפיפות הלייאאוט, סגנון הטיפוגרפיה, באדג'ים, אלמנטים דקורטיביים וגימור כללי, אך אל תעתיק את הטקסטים שלהן ולא את הצילומים שלהן."
-- If only photos: keep the current "השתמש בצילומים…" line, drop the references paragraph.
-- If only references: symmetric — "התמונות המצורפות הן דוגמאות סטייל בלבד…"
-- Then the mandatory-text block:
-  > "המודעה חייבת לכלול את הטקסטים הבאים בעברית:
-  > כותרת ראשית (הגדולה, מודגשת): '{headline}'
-  > תת־כותרת (קטנה יותר, תומכת): '{subheadline}'
-  > כפתור CTA (מעוצב כבבירור ככפתור): '{cta}'
-  > הטקסטים חייבים להופיע בדיוק אות-באות כפי שנכתבו, בעברית תקינה מימין לשמאל, ללא שגיאות כתיב וללא המצאת מילים."
-- Closes with (verbatim per spec):
-  > "professional advertising design, clean visual hierarchy, premium finish, no invented logos or business names, no extra text beyond what was specified."
+## 2. Update `/api/generate-graphics` system prompt (`src/routes/api/generate-graphics.ts`)
 
-## 5. Richer designBrief — `src/routes/api/generate-graphics.ts`
+In `buildSystemPrompt`, add an explicit input-usage clause near the top:
 
-- Rewrite `buildSystemPrompt`: `designBrief` becomes a **Hebrew** art-director spec (5–8 lines each) required to cover, per concept:
-  1. כיוון אמנותי כללי ומצב־רוח.
-  2. קומפוזיציה מדויקת (איפה עומד הטקסט, איפה הצילום, האם יש בליד, יחסי שטח).
-  3. מערכת דקורטיבית ייחודית לקונספט — divider / באדג' / חותמת / טקסטורה (זהב, גיר, קראפט, נייר, וכו'). כל קונספט חייב טקסטורה שונה מהאחרים.
-  4. שורת 3–4 USPs עם אייקון + לייבל קצר כשמתאים (לא בכל קונספט חובה).
-  5. עיצוב כפתור CTA — צורה, מיקום, אייקון (כשהטקסט מזמין לפנייה בוואטסאפ → אייקון WhatsApp; אחרת חץ).
-  6. מיקרו־קופי תחתון בשורה אחת (למשל "מושלם לימי הולדת, אירועים פרטיים וחגיגות") — כשמתאים.
-- The N concepts must use **clearly different** art directions (state this constraint explicitly and give examples: "chalkboard rustic", "gold-foil luxury editorial", "kraft-paper deli", "modern minimal editorial", "vibrant collage", etc.).
-- Update JSON-shape example in the prompt + user message to reflect the richer `designBrief`. Parsing already accepts a string, so no code change to `safeParseItems`.
-- Bump `temperature` to `1.0` for wider stylistic variance across concepts.
+> "בריף הלקוח הוא מקור העובדות והמסרים — שאב ממנו את הקופי, ה-USPs וזוויות המסר. את ההחלטות הוויזואליות קבע בעצמך ב-designBrief, בהתאם לצבעי המותג ולסגנון הרפרנסים."
 
-## 6. Types / small touches
+Add two rules to the existing rules list:
 
-- `src/integrations/supabase/types.ts` is auto-generated — leave untouched; the new `kind` column will regenerate on next sync. Access it via `(row as any).kind` OR just re-select on the `client_assets` query where the return columns still match after `select("id,storage_path,kind")` (extra column is fine).
-- No changes to `GraphicCard` or `SuccessGrid` (they render whatever image the server returns).
+- כל קונספט חייב לבחור **זווית מסר שונה** מרשימת "זוויות מסר" שבבריף (רגשי / FOMO / social proof / פרימיום / פרקטי וכו').
+- שורת ה-USPs בתוך `designBrief` חייבת להשתמש בלייבלים שמופיעים ברשימת ה-USPs של הבריף (לא להמציא חדשים).
 
-## Non-goals
+No change to `InputSchema`, response shape, temperature, or the JSON example — `brief` field already carries the full text through.
 
-- No new dependencies. No auth/RLS changes. No storage-bucket changes (references reuse the existing `client-assets` bucket + `user_id/client_id/uuid.ext` path convention).
-- Cost warning copy in `CreateScreen` stays as-is ("עד דקה לתמונה").
+## 3. Untouched
+
+- `ClientDialog` brief textarea: unchanged (already editable free text, generation button already calls `/api/generate-brief`).
+- `/api/generate-ad-image` prompt: unchanged.
+- DB, hooks, `CreateScreen`, `GraphicCard`, `SuccessGrid`: unchanged.
+- No new deps, no migrations.
+
+## Files touched
+
+- `src/routes/api/generate-brief.ts` — rewrite `SYSTEM_PROMPT`.
+- `src/routes/api/generate-graphics.ts` — extend `buildSystemPrompt` with input-usage clause + 2 rules.
