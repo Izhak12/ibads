@@ -91,6 +91,50 @@ export type Database = {
         }
         Relationships: []
       }
+      generated_graphics: {
+        Row: {
+          client_id: string
+          created_at: string
+          cta: string
+          design_brief: string
+          headline: string
+          id: string
+          storage_path: string
+          subheadline: string
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          cta?: string
+          design_brief?: string
+          headline?: string
+          id?: string
+          storage_path: string
+          subheadline?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          cta?: string
+          design_brief?: string
+          headline?: string
+          id?: string
+          storage_path?: string
+          subheadline?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_graphics_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
