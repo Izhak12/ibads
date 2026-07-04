@@ -124,13 +124,13 @@ export const Route = createFileRoute("/api/generate-graphics")({
               },
               body: JSON.stringify({
                 model: "gpt-4o",
-                temperature: 0.9,
+                temperature: 1.0,
                 response_format: { type: "json_object" },
                 messages: [
                   { role: "system", content: buildSystemPrompt(input) },
                   {
                     role: "user",
-                    content: `צור בדיוק ${input.amount} וריאציות שונות זו מזו – כל אחת עם designBrief באנגלית שמתאר קונספט ויזואלי ייחודי. החזר JSON object בפורמט: {"items":[{"headline":"...","subheadline":"...","cta":"...","designBrief":"..."}]}`,
+                    content: `צור בדיוק ${input.amount} וריאציות שונות זו מזו מהותית – כל אחת עם designBrief מלא בעברית בסגנון ארט־דירקטור (5–8 שורות, מכסה כיוון אמנותי, קומפוזיציה, דקורציה, USPs, CTA, מיקרו־קופי, שימוש בצבעי המותג). כל וריאציה חייבת להיות בעולם אסתטי שונה לחלוטין מהאחרות. החזר JSON object בפורמט: {"items":[{"headline":"...","subheadline":"...","cta":"...","designBrief":"..."}]}`,
                   },
                 ],
               }),
