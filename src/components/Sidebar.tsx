@@ -1,10 +1,11 @@
-import { Sparkles, Users, LogOut } from "lucide-react";
+import { Sparkles, Users, LogOut, FolderOpen } from "lucide-react";
 import logo from "@/assets/ibdigital-logo.jpg.asset.json";
 
-export type Tab = "create" | "clients";
+export type Tab = "create" | "clients" | "gallery";
 
 const items: { id: Tab; label: string; icon: typeof Sparkles }[] = [
   { id: "create", label: "יצירת גרפיקה", icon: Sparkles },
+  { id: "gallery", label: "גלריית עיצובים", icon: FolderOpen },
   { id: "clients", label: "לקוחות", icon: Users },
 ];
 

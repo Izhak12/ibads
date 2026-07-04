@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Sidebar, type Tab } from "@/components/Sidebar";
 import { CreateScreen } from "@/components/CreateScreen";
 import { ClientsScreen } from "@/components/ClientsScreen";
+import { GalleryScreen } from "@/components/GalleryScreen";
 import { AuthScreen } from "@/components/AuthScreen";
 import { ClientDialog } from "@/components/ClientDialog";
 import { ClientsProvider } from "@/context/ClientsContext";
@@ -77,6 +78,7 @@ function Index() {
                 className="flex flex-1 min-w-0"
               >
                 {tab === "create" && <CreateScreen />}
+                {tab === "gallery" && <GalleryScreen />}
                 {tab === "clients" && <ClientsScreen />}
               </motion.div>
             </AnimatePresence>

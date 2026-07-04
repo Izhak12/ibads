@@ -13,6 +13,8 @@ import { AppleSlider } from "./AppleSlider";
 import { PreviewPanel, type PreviewState } from "./PreviewPanel";
 import { useClients } from "@/context/ClientsContext";
 import { useClientAssets } from "@/hooks/useClientAssets";
+import { saveGeneratedGraphic } from "@/hooks/useGeneratedGraphics";
+import { useQueryClient } from "@tanstack/react-query";
 import type { GraphicItem } from "./GraphicCard";
 
 const ease = [0.22, 1, 0.36, 1] as const;
@@ -20,6 +22,7 @@ const ease = [0.22, 1, 0.36, 1] as const;
 export function CreateScreen() {
   const { clients, selectedClientId, setSelectedClientId, openClientDialog, openClientDialogFor } =
     useClients();
+  const qc = useQueryClient();
   const [text, setText] = useState("");
   const [brief, setBrief] = useState("");
   const [count, setCount] = useState(3);
@@ -72,6 +75,24 @@ export function CreateScreen() {
             i === idx ? { ...it, status: "success", imageB64: data.b64 } : it,
           ),
         );
+        // Persist in background — non-blocking
+        void saveGeneratedGraphic({
+          clientId: clientSnapshot.id,
+          imageB64: data.b64,
+          headline: concept.headline,
+          subheadline: concept.subheadline,
+          cta: concept.cta,
+          designBrief: concept.designBrief,
+        })
+          .then(() => {
+            qc.invalidateQueries({ queryKey: ["generated-graphics", "folders"] });
+            qc.invalidateQueries({
+              queryKey: ["generated-graphics", "list", clientSnapshot.id],
+            });
+          })
+          .catch((err) => {
+            console.error("Failed to save graphic:", err);
+          });
       } catch (err) {
         const message = err instanceof Error ? err.message : "שגיאה ביצירת התמונה";
         setItems((prev) =>
