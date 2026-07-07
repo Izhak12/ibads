@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { AlertCircle, Check, Copy, Download, Loader2, RefreshCw } from "lucide-react";
+import { AlertCircle, Check, Copy, Download, Loader2, PenLine, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+
+export type CopyStatus = "idle" | "loading" | "success" | "error";
 
 export type GraphicItem = {
   headline: string;
@@ -14,12 +16,15 @@ export type GraphicItem = {
   imageB64?: string;
   error?: string;
   retry?: () => void;
+  copyStatus?: CopyStatus;
+  copyError?: string;
 };
 
 type Props = {
   item: GraphicItem;
   index: number;
   fileNameBase?: string;
+  onGenerateCopy?: (index: number) => void;
 };
 
 function CopyButton({ text }: { text: string }) {
@@ -57,7 +62,7 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-export function GraphicCard({ item, index, fileNameBase = "graphic" }: Props) {
+export function GraphicCard({ item, index, fileNameBase = "graphic", onGenerateCopy }: Props) {
   const handleDownload = () => {
     if (!item.imageB64) return;
     try {
@@ -74,8 +79,12 @@ export function GraphicCard({ item, index, fileNameBase = "graphic" }: Props) {
     }
   };
 
-  const showCopy =
-    item.status === "success" && (item.primaryText || item.linkHeadline);
+  // Treat pre-persisted copy (Gallery) as success.
+  const effectiveCopyStatus: CopyStatus =
+    item.copyStatus ??
+    (item.primaryText || item.linkHeadline ? "success" : "idle");
+
+  const showFooter = item.status === "success";
 
   return (
     <motion.div
@@ -136,7 +145,36 @@ export function GraphicCard({ item, index, fileNameBase = "graphic" }: Props) {
         )}
       </div>
 
-      {showCopy && (
+      {showFooter && effectiveCopyStatus !== "success" && (
+        <button
+          onClick={() => onGenerateCopy?.(index)}
+          disabled={effectiveCopyStatus === "loading"}
+          className="w-full h-11 rounded-2xl bg-[#0B192C] text-white text-sm font-medium hover:bg-[#0B192C]/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-70"
+        >
+          {effectiveCopyStatus === "loading" ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              מייצר קופי…
+            </>
+          ) : effectiveCopyStatus === "error" ? (
+            <>
+              <RefreshCw className="w-4 h-4" />
+              נסה שוב — צור קופי
+            </>
+          ) : (
+            <>
+              <PenLine className="w-4 h-4" />
+              צור קופי למודעה
+            </>
+          )}
+        </button>
+      )}
+
+      {showFooter && effectiveCopyStatus === "error" && item.copyError && (
+        <div className="text-xs text-red-600 text-center">{item.copyError}</div>
+      )}
+
+      {showFooter && effectiveCopyStatus === "success" && (item.primaryText || item.linkHeadline) && (
         <div className="rounded-2xl bg-black/[0.03] border border-black/5 p-4 flex flex-col gap-4">
           {item.primaryText && (
             <div className="flex flex-col gap-1.5">
