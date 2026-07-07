@@ -428,7 +428,9 @@ export function CreateScreen() {
         accentColor={accentColor}
         fileNameBase={fileNameBase}
         onReset={() => setPreview("idle")}
+        onGenerateCopy={handleGenerateCopy}
       />
+
     </>
   );
 }
