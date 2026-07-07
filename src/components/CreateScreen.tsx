@@ -13,7 +13,7 @@ import { AppleSlider } from "./AppleSlider";
 import { PreviewPanel, type PreviewState } from "./PreviewPanel";
 import { useClients } from "@/context/ClientsContext";
 import { useClientAssets } from "@/hooks/useClientAssets";
-import { saveGeneratedGraphic } from "@/hooks/useGeneratedGraphics";
+import { saveGeneratedGraphic, updateGraphicCopy } from "@/hooks/useGeneratedGraphics";
 import { useQueryClient } from "@tanstack/react-query";
 import type { GraphicItem } from "./GraphicCard";
 
