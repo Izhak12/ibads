@@ -137,6 +137,8 @@ export async function saveGeneratedGraphic(args: {
   subheadline: string;
   cta: string;
   designBrief?: string;
+  primaryText?: string;
+  linkHeadline?: string;
 }): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
@@ -155,6 +157,8 @@ export async function saveGeneratedGraphic(args: {
     subheadline: args.subheadline,
     cta: args.cta,
     design_brief: args.designBrief ?? "",
+    primary_text: args.primaryText ?? null,
+    link_headline: args.linkHeadline ?? null,
   });
   if (insErr) throw insErr;
 }

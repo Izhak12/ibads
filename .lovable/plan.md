@@ -1,76 +1,54 @@
+## Meta Ads Creative Pack — Backend + Results UI
 
-# Design Gallery — Implementation Plan
+Upgrade generation to return graphic text + Meta Ads copy in a single call, and turn each result card into a "Creative Pack" (graphic + primary text + link headline with copy buttons).
 
-## Current State
-Generated graphics live only in `CreateScreen` React state (`items[].imageB64`) and vanish on refresh. There is no `generated_graphics` table and no storage bucket for outputs. `clients` and `client_assets` are already in place with RLS scoped to `auth.uid()`.
+### 1. Backend — `src/routes/api/generate-graphics.ts`
 
-To ship a gallery we need to (a) persist every successful generation, then (b) build the UI to browse it.
+Rewrite the system prompt with strict Direct Response rules, and extend the item schema:
 
----
+- **New fields per item:** `primary_text` (long post copy, PAS / status-hook / direct value offer; forbid opening questions like "מחפשים קייטרינג?"; 2–5 short lines, punchy hook first line, then value + CTA), `link_headline` (max 4–5 words, action-oriented like "לקבלת תפריט האירועים").
+- **Blacklist** reused: 'חלומית', 'קסם', 'בלתי נשכח', 'הפתעה קולינרית', 'פתרון אלגנטי', 'מגע אישי', 'הכי טעים שיש'.
+- Keep existing `headline`, `subheadline`, `cta`, `designBrief`; keep `json_object` mode with `{"items":[...]}` wrapper; keep `${clientBrief}` / `${optionalText}` / `${amountOfGraphics}` variables.
+- Update `GraphicText` type and `safeParseItems` to extract `primary_text` / `link_headline` (with sane fallbacks in the pad-to-amount loop).
 
-## 1. Database & Storage (new migration)
+### 2. Type propagation
 
-New table `public.generated_graphics`:
-- `id uuid pk`
-- `user_id uuid` (FK-style, `auth.uid()`)
-- `client_id uuid not null references public.clients(id) on delete cascade`
-- `storage_path text not null` (in new bucket `generated-graphics`)
-- `headline text`, `subheadline text`, `cta text`, `design_brief text`
-- `created_at timestamptz default now()`
+- `src/components/GraphicCard.tsx` — extend `GraphicItem` with `primaryText?: string` and `linkHeadline?: string`.
+- `src/components/CreateScreen.tsx` — read the two new fields from the API response, seed them into each `GraphicItem`, and pass them through unchanged (no change to `/api/generate-ad-image`, since the ad image only needs the on-graphic text).
+- `src/hooks/useGeneratedGraphics.ts` — persist `primary_text` / `link_headline` alongside existing metadata (new nullable columns, backwards compatible).
 
-Grants: `authenticated` (SELECT/INSERT/DELETE), `service_role` ALL. RLS enabled, policies scoped to `auth.uid() = user_id` (select/insert/delete; no update needed).
+### 3. Database — nullable columns on `generated_graphics`
 
-New private storage bucket `generated-graphics` with the same per-user folder policies as `client-assets` (path prefix `{user_id}/{client_id}/…`).
+Single migration adding `primary_text text` and `link_headline text` (both nullable, no RLS/grant changes needed). Gallery keeps working for older rows.
 
-No changes to `clients`, `client_assets`, auth, or onboarding.
+### 4. Frontend — "Creative Pack Card"
 
-## 2. Persist on generation success
-In `CreateScreen.generateOneImage`, right after receiving `data.b64`:
-- decode base64 → `Blob`, upload to `generated-graphics/{user}/{client}/{uuid}.png`
-- insert row into `generated_graphics` with client + concept text
-- keep the existing in-memory `imageB64` behavior so `SuccessGrid` still renders instantly; persistence runs in the background and surfaces a toast on failure only.
+Refactor `GraphicCard.tsx` so each card becomes vertical:
 
-New hook `src/hooks/useGeneratedGraphics.ts` (mirrors `useClientAssets`): `list(clientId)` returning signed URLs, `deleteGraphic(row)` (storage + row).
+- **Top:** the existing 1:1 image (unchanged loading/error/success states, download button still hovers over the image).
+- **Bottom:** an Apple-style container — `rounded-2xl bg-black/[0.03] border border-black/5 p-4 flex flex-col gap-3` — with two labeled blocks:
+  1. `טקסט מרכזי למודעה` — multi-line, `whitespace-pre-wrap text-sm leading-relaxed text-[#0B192C]`.
+  2. `כותרת ממומן (ליד הכפתור)` — single line, `text-sm font-medium`.
+- Each block has a sleek copy button (lucide `Copy` → `Check` for 1.5s on success), positioned at the block's start-edge in RTL (`dir="rtl"`), using `navigator.clipboard.writeText` + `sonner` toast fallback.
+- The bottom section is hidden while `status !== "success"` or when both fields are empty (older rows).
 
-## 3. Sidebar tab
-`src/components/Sidebar.tsx`: add third item `{ id: "gallery", label: "גלריית עיצובים", icon: FolderOpen }`. Extend `Tab` union. `src/routes/index.tsx`: render `<GalleryScreen />` when `tab === "gallery"` (kept inside existing `AnimatePresence`, no auth changes).
+### 5. Grid layout — `src/components/SuccessGrid.tsx`
 
-## 4. Gallery screen (new `src/components/GalleryScreen.tsx`)
-RTL, Apple-style, two internal views driven by local `selectedFolderId` state (no route change, keeps things simple and animated).
+- Cards are no longer square; drop the fixed `aspectRatio: 1/1` on the outer card and keep the 1:1 aspect only on the inner image wrapper in `GraphicCard`.
+- Keep the responsive `cols` logic but change `gridAutoRows` from `auto` to allow taller cards. Ensure the outer container stays `overflow-y-auto` (already true) — the whole results panel keeps its own scroll and the page itself never scrolls.
 
-**Folder view** — responsive grid of client folders:
-- Each card: client initial/logo circle (using brand color), client name, subtitle `{count} עיצובים` from a `select client_id, count(*) group by client_id` query.
-- Empty state when a client has 0 saved graphics: muted card, no click.
-- Framer-motion stagger in on mount.
+### 6. Regression checks (no changes, just verify)
 
-**Detail view** — animated slide/fade transition:
-- Sticky header with `← חזור לכל התיקיות` back button + client name + total count.
-- Responsive square grid of graphics (reuse tile styling from `GraphicCard` success state).
-- Hover overlay per tile with two circular icon buttons: **Download** (reuses the anchor-download pattern from `GraphicCard.handleDownload`, fetching the signed URL and saving as `{client-slug}-{n}.png`) and **Delete** (opens shadcn `AlertDialog` — "למחוק את העיצוב?" / "לא ניתן לשחזר" / cancel + confirm). On confirm: call `deleteGraphic`, optimistic React Query cache update, toast.
+- `PreviewPanel` passes `items` through to `SuccessGrid` untouched — safe.
+- `GalleryScreen` reads persisted rows; renders image only, so new nullable columns don't affect it.
+- Client brief pipeline (`generate-brief`) untouched; brief textarea in `ClientDialog` untouched.
+- `generate-ad-image` payload unchanged (only uses on-graphic text).
 
-Loading + empty states inline (skeleton grid; "עדיין אין עיצובים שמורים ללקוח זה").
+### Files touched
 
-## 5. Files touched
-
-**New**
-- `supabase/migrations/<ts>_generated_graphics.sql` — table, grants, RLS, storage bucket + policies.
-- `src/hooks/useGeneratedGraphics.ts`
-- `src/components/GalleryScreen.tsx`
-- `src/components/GalleryFolderCard.tsx` (small, for cleanliness)
-
-**Edited**
-- `src/components/Sidebar.tsx` — new tab entry.
-- `src/routes/index.tsx` — render `GalleryScreen` for the new tab.
-- `src/components/CreateScreen.tsx` — after successful image, upload + insert row (background, non-blocking).
-
-**Untouched (no regression risk)**
-- Auth flow (`AuthScreen`, root session handling)
-- Client onboarding (`ClientDialog`, `ClientsContext`, `ClientsScreen`)
-- Generation API routes (`generate-brief`, `generate-graphics`, `generate-ad-image`)
-- `client_assets`, existing storage bucket
-- `SuccessGrid` / `GraphicCard` (gallery uses its own tile to keep hover actions isolated)
-
-## 6. Notes / decisions to confirm
-- Storing full PNGs (typically 1–3 MB at 1024²) in Storage rather than base64 in Postgres — cheaper and standard.
-- Gallery lives as a tab (in-app state), not its own route, to match the existing `create`/`clients` pattern.
-- Deletion is hard-delete (row + storage object). No soft-delete/trash. Let me know if you'd rather have a trash bin.
+- edit `src/routes/api/generate-graphics.ts`
+- edit `src/components/GraphicCard.tsx`
+- edit `src/components/SuccessGrid.tsx`
+- edit `src/components/CreateScreen.tsx`
+- edit `src/hooks/useGeneratedGraphics.ts`
+- new migration: add `primary_text`, `link_headline` to `generated_graphics`

@@ -99,6 +99,8 @@ export type Database = {
           design_brief: string
           headline: string
           id: string
+          link_headline: string | null
+          primary_text: string | null
           storage_path: string
           subheadline: string
           user_id: string
@@ -110,6 +112,8 @@ export type Database = {
           design_brief?: string
           headline?: string
           id?: string
+          link_headline?: string | null
+          primary_text?: string | null
           storage_path: string
           subheadline?: string
           user_id: string
@@ -121,6 +125,8 @@ export type Database = {
           design_brief?: string
           headline?: string
           id?: string
+          link_headline?: string | null
+          primary_text?: string | null
           storage_path?: string
           subheadline?: string
           user_id?: string
