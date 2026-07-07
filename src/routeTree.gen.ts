@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiGenerateGraphicsRouteImport } from './routes/api/generate-graphics'
 import { Route as ApiGenerateBriefRouteImport } from './routes/api/generate-brief'
 import { Route as ApiGenerateAdImageRouteImport } from './routes/api/generate-ad-image'
+import { Route as ApiGenerateAdCopyRouteImport } from './routes/api/generate-ad-copy'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,15 +35,22 @@ const ApiGenerateAdImageRoute = ApiGenerateAdImageRouteImport.update({
   path: '/api/generate-ad-image',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGenerateAdCopyRoute = ApiGenerateAdCopyRouteImport.update({
+  id: '/api/generate-ad-copy',
+  path: '/api/generate-ad-copy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/generate-ad-copy': typeof ApiGenerateAdCopyRoute
   '/api/generate-ad-image': typeof ApiGenerateAdImageRoute
   '/api/generate-brief': typeof ApiGenerateBriefRoute
   '/api/generate-graphics': typeof ApiGenerateGraphicsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/generate-ad-copy': typeof ApiGenerateAdCopyRoute
   '/api/generate-ad-image': typeof ApiGenerateAdImageRoute
   '/api/generate-brief': typeof ApiGenerateBriefRoute
   '/api/generate-graphics': typeof ApiGenerateGraphicsRoute
@@ -50,6 +58,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/generate-ad-copy': typeof ApiGenerateAdCopyRoute
   '/api/generate-ad-image': typeof ApiGenerateAdImageRoute
   '/api/generate-brief': typeof ApiGenerateBriefRoute
   '/api/generate-graphics': typeof ApiGenerateGraphicsRoute
@@ -58,18 +67,21 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/api/generate-ad-copy'
     | '/api/generate-ad-image'
     | '/api/generate-brief'
     | '/api/generate-graphics'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/api/generate-ad-copy'
     | '/api/generate-ad-image'
     | '/api/generate-brief'
     | '/api/generate-graphics'
   id:
     | '__root__'
     | '/'
+    | '/api/generate-ad-copy'
     | '/api/generate-ad-image'
     | '/api/generate-brief'
     | '/api/generate-graphics'
@@ -77,6 +89,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiGenerateAdCopyRoute: typeof ApiGenerateAdCopyRoute
   ApiGenerateAdImageRoute: typeof ApiGenerateAdImageRoute
   ApiGenerateBriefRoute: typeof ApiGenerateBriefRoute
   ApiGenerateGraphicsRoute: typeof ApiGenerateGraphicsRoute
@@ -112,11 +125,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGenerateAdImageRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/generate-ad-copy': {
+      id: '/api/generate-ad-copy'
+      path: '/api/generate-ad-copy'
+      fullPath: '/api/generate-ad-copy'
+      preLoaderRoute: typeof ApiGenerateAdCopyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiGenerateAdCopyRoute: ApiGenerateAdCopyRoute,
   ApiGenerateAdImageRoute: ApiGenerateAdImageRoute,
   ApiGenerateBriefRoute: ApiGenerateBriefRoute,
   ApiGenerateGraphicsRoute: ApiGenerateGraphicsRoute,
