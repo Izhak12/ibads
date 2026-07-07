@@ -18,6 +18,7 @@ export type GraphicItem = {
   retry?: () => void;
   copyStatus?: CopyStatus;
   copyError?: string;
+  savedId?: string;
 };
 
 type Props = {
