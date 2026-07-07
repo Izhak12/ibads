@@ -14,12 +14,14 @@ export function PreviewPanel({
   accentColor,
   fileNameBase,
   onReset,
+  onGenerateCopy,
 }: {
   state: PreviewState;
   items: GraphicItem[];
   accentColor?: string;
   fileNameBase?: string;
   onReset: () => void;
+  onGenerateCopy?: (index: number) => void;
 }) {
   return (
     <div className="flex-1 h-screen p-8 overflow-hidden">
@@ -51,6 +53,7 @@ export function PreviewPanel({
                 accentColor={accentColor}
                 fileNameBase={fileNameBase}
                 onReset={onReset}
+                onGenerateCopy={onGenerateCopy}
               />
             </motion.div>
           )}
