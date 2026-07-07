@@ -141,7 +141,7 @@ export const Route = createFileRoute("/api/generate-graphics")({
                   { role: "system", content: buildSystemPrompt(input) },
                   {
                     role: "user",
-                    content: `צור בדיוק ${input.amount} Creative Packs שונים זה מזה מהותית — כל אחד עם זווית מסר שונה, headline/subheadline/cta לגרפיקה, primary_text לפוסט, link_headline לכפתור, ו-designBrief מלא בעברית. החזר JSON object בפורמט: {"items":[{"headline":"...","subheadline":"...","cta":"...","primary_text":"...","link_headline":"...","designBrief":"..."}]}`,
+                    content: `צור בדיוק ${input.amount} קונספטים לגרפיקות מודעה שונים זה מזה מהותית — כל אחד עם זווית מסר שונה: headline/subheadline/cta לגרפיקה ו-designBrief מלא בעברית. החזר JSON object בפורמט: {"items":[{"headline":"...","subheadline":"...","cta":"...","designBrief":"..."}]}`,
                   },
                 ],
               }),
@@ -164,8 +164,6 @@ export const Route = createFileRoute("/api/generate-graphics")({
               cta: "לפרטים נוספים",
               designBrief:
                 "כיוון אמנותי: modern minimal editorial פרימיום.\nקומפוזיציה: עמודה טיפוגרפית ימנית ובליד צילום בשמאל, יחס 40/60.\nדקורציה: divider דק ובאדג' קטן מוזהב פינת המודעה.\nUSPs: ללא.\nCTA: כפתור מלא ברוחב, פינות מעוגלות, אייקון חץ.\nמיקרו־קופי: שורה תחתונה אלגנטית.\nצבעים: רקע ניטרלי חם, טקסט כהה, אקסנט בצבע המותג הראשי.",
-              primaryText: "",
-              linkHeadline: "",
             });
           }
           return Response.json({ items });
