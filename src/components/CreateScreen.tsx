@@ -214,8 +214,6 @@ export function CreateScreen() {
         subheadline: string;
         cta: string;
         designBrief?: string;
-        primaryText?: string;
-        linkHeadline?: string;
       }>;
 
       const perItemAssets: string[][] = texts.map((_, i) => {
@@ -230,9 +228,8 @@ export function CreateScreen() {
         subheadline: t.subheadline,
         cta: t.cta,
         designBrief: t.designBrief,
-        primaryText: t.primaryText,
-        linkHeadline: t.linkHeadline,
         status: "loading",
+        copyStatus: "idle",
       }));
       setItems(seeded);
       setPreview("success");
