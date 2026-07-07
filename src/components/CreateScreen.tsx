@@ -43,8 +43,6 @@ export function CreateScreen() {
       subheadline: string;
       cta: string;
       designBrief?: string;
-      primaryText?: string;
-      linkHeadline?: string;
     },
     assetUrls: string[],
     referenceUrls: string[],
@@ -79,10 +77,12 @@ export function CreateScreen() {
         if (!res.ok || !data?.b64) throw new Error(data?.error ?? "שגיאה ביצירת התמונה");
         setItems((prev) =>
           prev.map((it, i) =>
-            i === idx ? { ...it, status: "success", imageB64: data.b64 } : it,
+            i === idx
+              ? { ...it, status: "success", imageB64: data.b64, copyStatus: "idle" }
+              : it,
           ),
         );
-        // Persist in background — non-blocking
+        // Persist in background — non-blocking. Store id on the item for later copy update.
         void saveGeneratedGraphic({
           clientId: clientSnapshot.id,
           imageB64: data.b64,
@@ -90,10 +90,11 @@ export function CreateScreen() {
           subheadline: concept.subheadline,
           cta: concept.cta,
           designBrief: concept.designBrief,
-          primaryText: concept.primaryText,
-          linkHeadline: concept.linkHeadline,
         })
-          .then(() => {
+          .then(({ id }) => {
+            setItems((prev) =>
+              prev.map((it, i) => (i === idx ? { ...it, savedId: id } : it)),
+            );
             qc.invalidateQueries({ queryKey: ["generated-graphics", "folders"] });
             qc.invalidateQueries({
               queryKey: ["generated-graphics", "list", clientSnapshot.id],
@@ -115,6 +116,68 @@ export function CreateScreen() {
     };
     await runOnce();
   };
+
+  const handleGenerateCopy = async (idx: number) => {
+    const current = items[idx];
+    if (!current || !client) return;
+    setItems((prev) =>
+      prev.map((it, i) =>
+        i === idx ? { ...it, copyStatus: "loading", copyError: undefined } : it,
+      ),
+    );
+    try {
+      const res = await fetch("/api/generate-ad-copy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientName: client.name,
+          clientBrief: [client.brief, brief].filter(Boolean).join("\n\n"),
+          clientIndustry: client.industry,
+          targetAudience: client.targetAudience,
+          brandVibe: client.brandVibe,
+          graphicHeadline: current.headline,
+          graphicSubheadline: current.subheadline,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error ?? "שגיאה");
+      const primaryText = String(data.primaryText ?? "");
+      const linkHeadline = String(data.linkHeadline ?? "");
+      setItems((prev) =>
+        prev.map((it, i) =>
+          i === idx
+            ? { ...it, primaryText, linkHeadline, copyStatus: "success" }
+            : it,
+        ),
+      );
+      // Persist to already-saved row
+      const savedId = (current as GraphicItem & { savedId?: string }).savedId;
+      // Read the latest savedId from state at time of resolution
+      setItems((prev) => {
+        const latest = prev[idx] as GraphicItem & { savedId?: string };
+        const id = latest?.savedId ?? savedId;
+        if (id) {
+          void updateGraphicCopy(id, { primaryText, linkHeadline })
+            .then(() => {
+              qc.invalidateQueries({
+                queryKey: ["generated-graphics", "list", client.id],
+              });
+            })
+            .catch((err) => console.error("Failed to persist copy:", err));
+        }
+        return prev;
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "שגיאה ביצירת הקופי";
+      setItems((prev) =>
+        prev.map((it, i) =>
+          i === idx ? { ...it, copyStatus: "error", copyError: message } : it,
+        ),
+      );
+      toast.error("שגיאה ביצירת הקופי", { description: message });
+    }
+  };
+
 
   const handleGenerate = async () => {
     if (!client) {
