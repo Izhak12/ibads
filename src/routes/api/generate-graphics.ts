@@ -19,8 +19,6 @@ export type GraphicText = {
   subheadline: string;
   cta: string;
   designBrief: string;
-  primaryText: string;
-  linkHeadline: string;
 };
 
 function buildSystemPrompt(input: Input) {
