@@ -98,8 +98,6 @@ function safeParseItems(raw: string, amount: number): GraphicText[] {
       subheadline: String(o.subheadline ?? "").trim(),
       cta: String(o.cta ?? "").trim() || "לפרטים נוספים",
       designBrief: String(o.designBrief ?? o.design_brief ?? "").trim(),
-      primaryText: String(o.primary_text ?? o.primaryText ?? "").trim(),
-      linkHeadline: String(o.link_headline ?? o.linkHeadline ?? "").trim(),
     };
   });
 }
