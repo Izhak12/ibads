@@ -11,11 +11,13 @@ export function SuccessGrid({
   accentColor,
   fileNameBase,
   onReset,
+  onGenerateCopy,
 }: {
   items: GraphicItem[];
   accentColor?: string;
   fileNameBase?: string;
   onReset: () => void;
+  onGenerateCopy?: (index: number) => void;
 }) {
   const count = items.length;
   const { cols } = layoutFor(count);
@@ -28,7 +30,7 @@ export function SuccessGrid({
             הגרפיקות מוכנות
           </div>
           <div className="text-sm text-black/50 mt-0.5">
-            {count} Creative Packs נוצרו עבורך — כולל טקסט מודעה וכותרת ממומן
+            {count} גרפיקות נוצרו — לחץ "צור קופי למודעה" בכל כרטיס לטקסט מודעה מלא
           </div>
         </div>
         <button
@@ -47,7 +49,13 @@ export function SuccessGrid({
           }}
         >
           {items.map((item, i) => (
-            <GraphicCard key={i} item={item} index={i} fileNameBase={fileNameBase} />
+            <GraphicCard
+              key={i}
+              item={item}
+              index={i}
+              fileNameBase={fileNameBase}
+              onGenerateCopy={onGenerateCopy}
+            />
           ))}
         </div>
       </div>
