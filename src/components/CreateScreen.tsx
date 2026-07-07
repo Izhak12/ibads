@@ -38,7 +38,14 @@ export function CreateScreen() {
   const canGenerate = !!client && assets.length > 0 && preview !== "loading";
 
   const generateOneImage = async (
-    concept: { headline: string; subheadline: string; cta: string; designBrief?: string },
+    concept: {
+      headline: string;
+      subheadline: string;
+      cta: string;
+      designBrief?: string;
+      primaryText?: string;
+      linkHeadline?: string;
+    },
     assetUrls: string[],
     referenceUrls: string[],
     clientSnapshot: NonNullable<typeof client>,
@@ -83,6 +90,8 @@ export function CreateScreen() {
           subheadline: concept.subheadline,
           cta: concept.cta,
           designBrief: concept.designBrief,
+          primaryText: concept.primaryText,
+          linkHeadline: concept.linkHeadline,
         })
           .then(() => {
             qc.invalidateQueries({ queryKey: ["generated-graphics", "folders"] });
@@ -142,6 +151,8 @@ export function CreateScreen() {
         subheadline: string;
         cta: string;
         designBrief?: string;
+        primaryText?: string;
+        linkHeadline?: string;
       }>;
 
       const perItemAssets: string[][] = texts.map((_, i) => {
@@ -156,6 +167,8 @@ export function CreateScreen() {
         subheadline: t.subheadline,
         cta: t.cta,
         designBrief: t.designBrief,
+        primaryText: t.primaryText,
+        linkHeadline: t.linkHeadline,
         status: "loading",
       }));
       setItems(seeded);

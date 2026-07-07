@@ -1,10 +1,9 @@
 import { GraphicCard, type GraphicItem } from "./GraphicCard";
 
-function layoutFor(count: number): { cols: number; rows: number } {
-  if (count <= 1) return { cols: 1, rows: 1 };
-  if (count <= 4) return { cols: 2, rows: 2 };
-  if (count <= 9) return { cols: 3, rows: 3 };
-  return { cols: 4, rows: 3 };
+function layoutFor(count: number): { cols: number } {
+  if (count <= 1) return { cols: 1 };
+  if (count <= 4) return { cols: 2 };
+  return { cols: 3 };
 }
 
 export function SuccessGrid({
@@ -19,7 +18,7 @@ export function SuccessGrid({
   onReset: () => void;
 }) {
   const count = items.length;
-  const { cols, rows } = layoutFor(count);
+  const { cols } = layoutFor(count);
 
   return (
     <div className="w-full h-full flex flex-col gap-4 min-h-0">
@@ -29,7 +28,7 @@ export function SuccessGrid({
             הגרפיקות מוכנות
           </div>
           <div className="text-sm text-black/50 mt-0.5">
-            {count} עיצובים נוצרו עבורך — רחף על גרפיקה כדי להוריד
+            {count} Creative Packs נוצרו עבורך — כולל טקסט מודעה וכותרת ממומן
           </div>
         </div>
         <button
@@ -40,12 +39,11 @@ export function SuccessGrid({
         </button>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="flex-1 min-h-0 overflow-y-auto pr-1">
         <div
-          className="grid gap-4 w-full mx-auto"
+          className="grid gap-5 w-full mx-auto items-start"
           style={{
             gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-            gridAutoRows: "auto",
           }}
         >
           {items.map((item, i) => (

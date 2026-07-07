@@ -19,6 +19,8 @@ export type GraphicText = {
   subheadline: string;
   cta: string;
   designBrief: string;
+  primaryText: string;
+  linkHeadline: string;
 };
 
 function buildSystemPrompt(input: Input) {
@@ -36,44 +38,56 @@ function buildSystemPrompt(input: Input) {
   const optionalText = input.text || "אין";
   const amountOfGraphics = input.amount;
 
-  return `אתה קופירייטר Direct Response בכיר ואסטרטג קמפיינים לממומן (Meta Ads). המומחיות שלך היא לכתוב קופי שעוצר את הגלילה (Scroll-stopping), פונה לכאב או לתשוקה עמוקה של הלקוח, ומייצר לידים איכותיים.
+  return `אתה קופירייטר Direct Response בכיר ואסטרטג קמפיינים לממומן (Meta Ads). המומחיות שלך היא לכתוב Creative Packs שלמים למודעות פייסבוק/אינסטגרם: גרפיקה + טקסט מרכזי לפוסט + כותרת ממומן ליד ה-CTA — כשכולם עובדים ביחד באותו קו אסטרטגי.
 
 המשימה:
-
-ליצור קונספט וטקסטים למודעות עבור העסק הבא:
+צור Creative Packs שלמים עבור העסק הבא:
 
 בריף וקהל יעד: ${clientBrief}
 
 טקסט חובה לשילוב (אם יש): ${optionalText}
 
-חוקי ברזל לכתיבה שיווקית (חובה לציית):
+לכל וריאציה חייב להיות קונספט ייחודי (זווית מסר שונה מהאחרות), והטקסט על הגרפיקה חייב להיות מיושר לוגית עם ה-primary_text ועם ה-link_headline של אותה וריאציה.
 
-1. כותרת (Headline): חייבת להיות 'הוק' (Hook) חזק. אל תשאל שאלות קיטשיות ואל תשתמש בסיסמאות ריקות. פנה ישירות לתוצאה הסופית שהלקוח רוצה או לבעיה שהוא רוצה לפתור. (מקסימום 6 מילים).
+חוקי ברזל:
 
-2. תת-כותרת (Subheadline): גיבוי לכותרת. תן סיבה הגיונית, מוחשית וספציפית למה לבחור בשירות הזה, ולא מתחרים. (מקסימום 12 מילים).
+1. Headline (על הגרפיקה): הוק חד וקצר, מקסימום 6 מילים. פונה לתוצאה או לכאב. בלי סיסמאות ריקות ובלי שאלות קיטשיות.
 
-3. טקסט גוף / בולטים (Body/Bullets): השתמש בזה רק אם צריך להעביר מידע ספציפי (למשל: 'תפריט מותאם אישית | חומרי גלם טריים'). בלי חפירות.
+2. Subheadline (על הגרפיקה): מקסימום 12 מילים. סיבה מוחשית וספציפית — לא כלליות שיווקית.
 
-4. הנעה לפעולה (CTA): ברורה, אקטיבית וקצרה. למשל: 'בדקו זמינות תאריך', 'לקבלת תפריט מחירים', 'דברו איתנו בוואטסאפ'.
+3. CTA (על הגרפיקה): אקטיבי, ברור, קצר. למשל "בדקו זמינות תאריך", "לקבלת תפריט מחירים", "דברו איתנו בוואטסאפ".
 
-רשימה שחורה - מילים וביטויים שאסור לך להשתמש בהם בשום אופן (AI Fluff):
+4. primary_text (הטקסט המרכזי של המודעה, זה מה שנכתב בפוסט עצמו בפייסבוק/אינסטגרם):
+   - חובה להתחיל בהוק סקרול-סטופר בשורה הראשונה. לא שאלה גנרית פותחת.
+   - אסור בהחלט להתחיל במשפטים כמו "מחפשים קייטרינג?", "רוצים אירוע מושלם?", "חושבים על אירוע?" — או כל שאלה פותחת דומה.
+   - השתמש באחת מהמסגרות: PAS (Pain-Agitate-Solution), Status/Situation hook ("שבוע לפני האירוע ועדיין אין תפריט סגור?"), או Direct Value Offer ("תפריט שף מלא ל-40 איש, כולל מלצרים, החל מ-X ש\"ח").
+   - 2 עד 5 שורות קצרות. שורות חדשות (\\n) בין הבלוקים. אמוג'ים במידה, לא חובה.
+   - סיים עם CTA טבעי משולב בטקסט (למשל "שלחו הודעה ונחזור אליכם עוד היום").
 
+5. link_headline (הכותרת שמופיעה למטה בממומן, ליד כפתור ה-CTA):
+   - מקסימום 4-5 מילים. שיווקי, חד, פועל להמרה.
+   - דוגמאות: "תאריכים אחרונים ליולי", "לקבלת תפריט האירועים", "הצעת מחיר תוך 24 שעות".
+
+רשימה שחורה — אסור בכל השדות:
 'חלומית', 'קסם', 'בלתי נשכח', 'הפתעה קולינרית', 'פתרון אלגנטי', 'מגע אישי', 'הכי טעים שיש'.
 
-במקום המילים האלו, דבר בתוצאות, במספרים, בתועלות אמיתיות ובשפה טבעית, בגובה העיניים אבל פרימיום.
+במקום מילים ריקות — דבר בתוצאות, מספרים, תועלות אמיתיות, ובשפה טבעית פרימיום בגובה העיניים.
 
 CRITICAL FORMATTING REQUIREMENT:
 
 You MUST output ONLY a JSON object with an "items" array containing exactly ${amountOfGraphics} objects. No markdown, no conversational text.
 
-Format exactly like this:
+Format:
 
 {
   "items": [
     {
       "headline": "כותרת עוצרת גלילה",
       "subheadline": "תת כותרת מוחשית שמגבה את הכותרת",
-      "cta": "הנעה לפעולה אקטיבית"
+      "cta": "הנעה לפעולה אקטיבית",
+      "primary_text": "הוק פותח\\nשורת ערך מוחשית\\nCTA טבעי",
+      "link_headline": "כותרת ממומן קצרה",
+      "designBrief": "כיוון אמנותי, קומפוזיציה, דקורציה, שימוש בצבעי המותג ו-CTA — 5-8 שורות בעברית"
     }
   ]
 }`;
@@ -98,6 +112,8 @@ function safeParseItems(raw: string, amount: number): GraphicText[] {
       subheadline: String(o.subheadline ?? "").trim(),
       cta: String(o.cta ?? "").trim() || "לפרטים נוספים",
       designBrief: String(o.designBrief ?? o.design_brief ?? "").trim(),
+      primaryText: String(o.primary_text ?? o.primaryText ?? "").trim(),
+      linkHeadline: String(o.link_headline ?? o.linkHeadline ?? "").trim(),
     };
   });
 }
@@ -141,7 +157,7 @@ export const Route = createFileRoute("/api/generate-graphics")({
                   { role: "system", content: buildSystemPrompt(input) },
                   {
                     role: "user",
-                    content: `צור בדיוק ${input.amount} וריאציות שונות זו מזו מהותית – כל אחת עם designBrief מלא בעברית בסגנון ארט־דירקטור (5–8 שורות, מכסה כיוון אמנותי, קומפוזיציה, דקורציה, USPs, CTA, מיקרו־קופי, שימוש בצבעי המותג). כל וריאציה חייבת להיות בעולם אסתטי שונה לחלוטין מהאחרות. החזר JSON object בפורמט: {"items":[{"headline":"...","subheadline":"...","cta":"...","designBrief":"..."}]}`,
+                    content: `צור בדיוק ${input.amount} Creative Packs שונים זה מזה מהותית — כל אחד עם זווית מסר שונה, headline/subheadline/cta לגרפיקה, primary_text לפוסט, link_headline לכפתור, ו-designBrief מלא בעברית. החזר JSON object בפורמט: {"items":[{"headline":"...","subheadline":"...","cta":"...","primary_text":"...","link_headline":"...","designBrief":"..."}]}`,
                   },
                 ],
               }),
@@ -164,6 +180,8 @@ export const Route = createFileRoute("/api/generate-graphics")({
               cta: "לפרטים נוספים",
               designBrief:
                 "כיוון אמנותי: modern minimal editorial פרימיום.\nקומפוזיציה: עמודה טיפוגרפית ימנית ובליד צילום בשמאל, יחס 40/60.\nדקורציה: divider דק ובאדג' קטן מוזהב פינת המודעה.\nUSPs: ללא.\nCTA: כפתור מלא ברוחב, פינות מעוגלות, אייקון חץ.\nמיקרו־קופי: שורה תחתונה אלגנטית.\nצבעים: רקע ניטרלי חם, טקסט כהה, אקסנט בצבע המותג הראשי.",
+              primaryText: "",
+              linkHeadline: "",
             });
           }
           return Response.json({ items });
