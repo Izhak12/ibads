@@ -139,7 +139,7 @@ export async function saveGeneratedGraphic(args: {
   designBrief?: string;
   primaryText?: string;
   linkHeadline?: string;
-}): Promise<void> {
+}): Promise<{ id: string }> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
   const filename = `${crypto.randomUUID()}.png`;
@@ -149,16 +149,35 @@ export async function saveGeneratedGraphic(args: {
     .from(BUCKET)
     .upload(path, blob, { cacheControl: "3600", upsert: false, contentType: "image/png" });
   if (upErr) throw upErr;
-  const { error: insErr } = await supabase.from("generated_graphics").insert({
-    client_id: args.clientId,
-    user_id: user.id,
-    storage_path: path,
-    headline: args.headline,
-    subheadline: args.subheadline,
-    cta: args.cta,
-    design_brief: args.designBrief ?? "",
-    primary_text: args.primaryText ?? null,
-    link_headline: args.linkHeadline ?? null,
-  });
+  const { data: inserted, error: insErr } = await supabase
+    .from("generated_graphics")
+    .insert({
+      client_id: args.clientId,
+      user_id: user.id,
+      storage_path: path,
+      headline: args.headline,
+      subheadline: args.subheadline,
+      cta: args.cta,
+      design_brief: args.designBrief ?? "",
+      primary_text: args.primaryText ?? null,
+      link_headline: args.linkHeadline ?? null,
+    })
+    .select("id")
+    .single();
   if (insErr) throw insErr;
+  return { id: inserted.id };
+}
+
+export async function updateGraphicCopy(
+  id: string,
+  args: { primaryText: string; linkHeadline: string },
+): Promise<void> {
+  const { error } = await supabase
+    .from("generated_graphics")
+    .update({
+      primary_text: args.primaryText,
+      link_headline: args.linkHeadline,
+    })
+    .eq("id", id);
+  if (error) throw error;
 }

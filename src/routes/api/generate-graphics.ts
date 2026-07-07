@@ -19,8 +19,6 @@ export type GraphicText = {
   subheadline: string;
   cta: string;
   designBrief: string;
-  primaryText: string;
-  linkHeadline: string;
 };
 
 function buildSystemPrompt(input: Input) {
@@ -38,16 +36,15 @@ function buildSystemPrompt(input: Input) {
   const optionalText = input.text || "אין";
   const amountOfGraphics = input.amount;
 
-  return `אתה קופירייטר Direct Response בכיר ואסטרטג קמפיינים לממומן (Meta Ads). המומחיות שלך היא לכתוב Creative Packs שלמים למודעות פייסבוק/אינסטגרם: גרפיקה + טקסט מרכזי לפוסט + כותרת ממומן ליד ה-CTA — כשכולם עובדים ביחד באותו קו אסטרטגי.
+  return `אתה קופירייטר Direct Response בכיר ואסטרטג ויזואלי לקמפיינים ממומנים (Meta Ads). המשימה שלך: לייצר קונספטים לגרפיקות מודעה — טקסט קצר על הגרפיקה + בריף אמנותי מלא לביצוע.
 
-המשימה:
-צור Creative Packs שלמים עבור העסק הבא:
+צור וריאציות עבור העסק הבא:
 
 בריף וקהל יעד: ${clientBrief}
 
 טקסט חובה לשילוב (אם יש): ${optionalText}
 
-לכל וריאציה חייב להיות קונספט ייחודי (זווית מסר שונה מהאחרות), והטקסט על הגרפיקה חייב להיות מיושר לוגית עם ה-primary_text ועם ה-link_headline של אותה וריאציה.
+לכל וריאציה קונספט ייחודי (זווית מסר שונה מהאחרות).
 
 חוקי ברזל:
 
@@ -57,16 +54,7 @@ function buildSystemPrompt(input: Input) {
 
 3. CTA (על הגרפיקה): אקטיבי, ברור, קצר. למשל "בדקו זמינות תאריך", "לקבלת תפריט מחירים", "דברו איתנו בוואטסאפ".
 
-4. primary_text (הטקסט המרכזי של המודעה, זה מה שנכתב בפוסט עצמו בפייסבוק/אינסטגרם):
-   - חובה להתחיל בהוק סקרול-סטופר בשורה הראשונה. לא שאלה גנרית פותחת.
-   - אסור בהחלט להתחיל במשפטים כמו "מחפשים קייטרינג?", "רוצים אירוע מושלם?", "חושבים על אירוע?" — או כל שאלה פותחת דומה.
-   - השתמש באחת מהמסגרות: PAS (Pain-Agitate-Solution), Status/Situation hook ("שבוע לפני האירוע ועדיין אין תפריט סגור?"), או Direct Value Offer ("תפריט שף מלא ל-40 איש, כולל מלצרים, החל מ-X ש\"ח").
-   - 2 עד 5 שורות קצרות. שורות חדשות (\\n) בין הבלוקים. אמוג'ים במידה, לא חובה.
-   - סיים עם CTA טבעי משולב בטקסט (למשל "שלחו הודעה ונחזור אליכם עוד היום").
-
-5. link_headline (הכותרת שמופיעה למטה בממומן, ליד כפתור ה-CTA):
-   - מקסימום 4-5 מילים. שיווקי, חד, פועל להמרה.
-   - דוגמאות: "תאריכים אחרונים ליולי", "לקבלת תפריט האירועים", "הצעת מחיר תוך 24 שעות".
+4. designBrief: כיוון אמנותי, קומפוזיציה, דקורציה, שימוש בצבעי המותג ו-CTA — 5-8 שורות בעברית.
 
 רשימה שחורה — אסור בכל השדות:
 'חלומית', 'קסם', 'בלתי נשכח', 'הפתעה קולינרית', 'פתרון אלגנטי', 'מגע אישי', 'הכי טעים שיש'.
@@ -85,8 +73,6 @@ Format:
       "headline": "כותרת עוצרת גלילה",
       "subheadline": "תת כותרת מוחשית שמגבה את הכותרת",
       "cta": "הנעה לפעולה אקטיבית",
-      "primary_text": "הוק פותח\\nשורת ערך מוחשית\\nCTA טבעי",
-      "link_headline": "כותרת ממומן קצרה",
       "designBrief": "כיוון אמנותי, קומפוזיציה, דקורציה, שימוש בצבעי המותג ו-CTA — 5-8 שורות בעברית"
     }
   ]
@@ -112,8 +98,6 @@ function safeParseItems(raw: string, amount: number): GraphicText[] {
       subheadline: String(o.subheadline ?? "").trim(),
       cta: String(o.cta ?? "").trim() || "לפרטים נוספים",
       designBrief: String(o.designBrief ?? o.design_brief ?? "").trim(),
-      primaryText: String(o.primary_text ?? o.primaryText ?? "").trim(),
-      linkHeadline: String(o.link_headline ?? o.linkHeadline ?? "").trim(),
     };
   });
 }
@@ -157,7 +141,7 @@ export const Route = createFileRoute("/api/generate-graphics")({
                   { role: "system", content: buildSystemPrompt(input) },
                   {
                     role: "user",
-                    content: `צור בדיוק ${input.amount} Creative Packs שונים זה מזה מהותית — כל אחד עם זווית מסר שונה, headline/subheadline/cta לגרפיקה, primary_text לפוסט, link_headline לכפתור, ו-designBrief מלא בעברית. החזר JSON object בפורמט: {"items":[{"headline":"...","subheadline":"...","cta":"...","primary_text":"...","link_headline":"...","designBrief":"..."}]}`,
+                    content: `צור בדיוק ${input.amount} קונספטים לגרפיקות מודעה שונים זה מזה מהותית — כל אחד עם זווית מסר שונה: headline/subheadline/cta לגרפיקה ו-designBrief מלא בעברית. החזר JSON object בפורמט: {"items":[{"headline":"...","subheadline":"...","cta":"...","designBrief":"..."}]}`,
                   },
                 ],
               }),
@@ -180,8 +164,6 @@ export const Route = createFileRoute("/api/generate-graphics")({
               cta: "לפרטים נוספים",
               designBrief:
                 "כיוון אמנותי: modern minimal editorial פרימיום.\nקומפוזיציה: עמודה טיפוגרפית ימנית ובליד צילום בשמאל, יחס 40/60.\nדקורציה: divider דק ובאדג' קטן מוזהב פינת המודעה.\nUSPs: ללא.\nCTA: כפתור מלא ברוחב, פינות מעוגלות, אייקון חץ.\nמיקרו־קופי: שורה תחתונה אלגנטית.\nצבעים: רקע ניטרלי חם, טקסט כהה, אקסנט בצבע המותג הראשי.",
-              primaryText: "",
-              linkHeadline: "",
             });
           }
           return Response.json({ items });
