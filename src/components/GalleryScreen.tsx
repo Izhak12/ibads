@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Download, FolderOpen, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useClients } from "@/context/ClientsContext";
+import { AdTextOverlay } from "./AdTextOverlay";
 import {
   useGraphicFolders,
   useGraphicsForClient,
