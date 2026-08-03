@@ -65,11 +65,22 @@ function CopyButton({ text }: { text: string }) {
 }
 
 export function GraphicCard({ item, index, fileNameBase = "graphic", onGenerateCopy }: Props) {
-  const handleDownload = () => {
-    if (!item.imageB64) return;
+  const composeRef = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState(false);
+
+  const handleDownload = async () => {
+    const node = composeRef.current;
+    if (!node || !item.imageB64) return;
+    setExporting(true);
     try {
+      const width = node.offsetWidth || 540;
+      const dataUrl = await toPng(node, {
+        pixelRatio: 1080 / width,
+        cacheBust: true,
+        backgroundColor: "#0B192C",
+      });
       const a = document.createElement("a");
-      a.href = `data:image/png;base64,${item.imageB64}`;
+      a.href = dataUrl;
       a.download = `${fileNameBase}-${index + 1}.png`;
       document.body.appendChild(a);
       a.click();
@@ -78,6 +89,8 @@ export function GraphicCard({ item, index, fileNameBase = "graphic", onGenerateC
       toast.error("שגיאה בהורדה", {
         description: err instanceof Error ? err.message : undefined,
       });
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -130,22 +143,102 @@ export function GraphicCard({ item, index, fileNameBase = "graphic", onGenerateC
 
         {item.status === "success" && item.imageB64 && (
           <>
-            <img
-              src={`data:image/png;base64,${item.imageB64}`}
-              alt={item.headline}
-              className="absolute inset-0 w-full h-full object-cover"
-            />
+            <div
+              ref={composeRef}
+              dir="rtl"
+              className="absolute inset-0 overflow-hidden"
+              style={{ containerType: "inline-size" }}
+            >
+              <img
+                src={`data:image/png;base64,${item.imageB64}`}
+                alt={item.headline}
+                crossOrigin="anonymous"
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+              {/* legibility scrim */}
+              <div
+                className="absolute inset-0"
+                style={{
+                  background:
+                    "linear-gradient(to top, rgba(11,25,44,0.92) 0%, rgba(11,25,44,0.72) 30%, rgba(11,25,44,0.15) 58%, rgba(11,25,44,0) 78%)",
+                }}
+              />
+              <div
+                className="absolute inset-x-0 bottom-0 flex flex-col items-start text-right"
+                style={{ padding: "7cqw", gap: "2.2cqw" }}
+              >
+                {item.headline && (
+                  <h3
+                    className="text-white font-[900] m-0"
+                    style={{
+                      fontFamily: '"Rubik", "Heebo", sans-serif',
+                      fontSize: "9cqw",
+                      lineHeight: 1.08,
+                      letterSpacing: "-0.02em",
+                      maxWidth: "92%",
+                      overflowWrap: "break-word",
+                      wordBreak: "break-word",
+                      textShadow: "0 2px 18px rgba(0,0,0,0.35)",
+                    }}
+                  >
+                    {item.headline}
+                  </h3>
+                )}
+                {item.subheadline && (
+                  <p
+                    className="m-0"
+                    style={{
+                      fontFamily: '"Heebo", sans-serif',
+                      color: "rgba(255,255,255,0.86)",
+                      fontSize: "4.4cqw",
+                      lineHeight: 1.35,
+                      fontWeight: 400,
+                      maxWidth: "88%",
+                      overflowWrap: "break-word",
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {item.subheadline}
+                  </p>
+                )}
+                {item.cta && (
+                  <div
+                    className="inline-flex items-center"
+                    style={{
+                      marginTop: "1.6cqw",
+                      background: "#FFFFFF",
+                      color: "#0B192C",
+                      fontFamily: '"Rubik", "Heebo", sans-serif',
+                      fontWeight: 700,
+                      fontSize: "4cqw",
+                      lineHeight: 1,
+                      padding: "3.4cqw 6cqw",
+                      borderRadius: "999px",
+                      boxShadow: "0 8px 24px rgba(0,0,0,0.28)",
+                    }}
+                  >
+                    {item.cta}
+                  </div>
+                )}
+              </div>
+            </div>
             <button
               onClick={handleDownload}
-              className="absolute top-3 left-3 z-10 w-10 h-10 rounded-full bg-white/90 backdrop-blur text-[#0B192C] flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 hover:bg-white transition-all"
+              disabled={exporting}
+              className="absolute top-3 left-3 z-10 w-10 h-10 rounded-full bg-white/90 backdrop-blur text-[#0B192C] flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 hover:bg-white transition-all disabled:opacity-60"
               aria-label="הורד גרפיקה"
               title="הורד PNG"
             >
-              <Download className="w-4 h-4" />
+              {exporting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
             </button>
           </>
         )}
       </div>
+
 
       {showFooter && effectiveCopyStatus !== "success" && (
         <button
