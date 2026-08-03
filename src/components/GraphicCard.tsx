@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { AlertCircle, Check, Copy, Download, Loader2, PenLine, RefreshCw } from "lucide-react";
+import { toPng } from "html-to-image";
 import { toast } from "sonner";
 
 export type CopyStatus = "idle" | "loading" | "success" | "error";
