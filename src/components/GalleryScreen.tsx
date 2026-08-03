@@ -196,14 +196,19 @@ function FolderDetail({ clientId, clientName }: { clientId: string; clientName: 
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ delay: i * 0.04, duration: 0.4, ease }}
             className="relative rounded-2xl overflow-hidden bg-[#0B192C]/5 shadow-[0_10px_30px_-15px_rgba(11,25,44,0.35)] border border-black/5 group"
-            style={{ aspectRatio: "1 / 1" }}
+            style={{ aspectRatio: "1 / 1", containerType: "inline-size" }}
           >
             <img
               src={g.url}
               alt={g.headline}
               className="absolute inset-0 w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <AdTextOverlay
+              headline={g.headline}
+              subheadline={g.subheadline}
+              cta={g.cta}
+            />
+
             <div className="absolute top-3 left-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
                 onClick={() => handleDownload(g, i)}
