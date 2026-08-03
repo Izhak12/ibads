@@ -1,9 +1,7 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { AlertCircle, Check, Copy, Download, Loader2, PenLine, RefreshCw } from "lucide-react";
-import { toPng } from "html-to-image";
 import { toast } from "sonner";
-import { AdTextOverlay } from "./AdTextOverlay";
 
 export type CopyStatus = "idle" | "loading" | "success" | "error";
 
@@ -66,22 +64,11 @@ function CopyButton({ text }: { text: string }) {
 }
 
 export function GraphicCard({ item, index, fileNameBase = "graphic", onGenerateCopy }: Props) {
-  const composeRef = useRef<HTMLDivElement>(null);
-  const [exporting, setExporting] = useState(false);
-
-  const handleDownload = async () => {
-    const node = composeRef.current;
-    if (!node || !item.imageB64) return;
-    setExporting(true);
+  const handleDownload = () => {
+    if (!item.imageB64) return;
     try {
-      const width = node.offsetWidth || 540;
-      const dataUrl = await toPng(node, {
-        pixelRatio: 1080 / width,
-        cacheBust: true,
-        backgroundColor: "#0B192C",
-      });
       const a = document.createElement("a");
-      a.href = dataUrl;
+      a.href = `data:image/png;base64,${item.imageB64}`;
       a.download = `${fileNameBase}-${index + 1}.png`;
       document.body.appendChild(a);
       a.click();
@@ -90,8 +77,6 @@ export function GraphicCard({ item, index, fileNameBase = "graphic", onGenerateC
       toast.error("שגיאה בהורדה", {
         description: err instanceof Error ? err.message : undefined,
       });
-    } finally {
-      setExporting(false);
     }
   };
 
@@ -144,42 +129,22 @@ export function GraphicCard({ item, index, fileNameBase = "graphic", onGenerateC
 
         {item.status === "success" && item.imageB64 && (
           <>
-            <div
-              ref={composeRef}
-              dir="rtl"
-              className="absolute inset-0 overflow-hidden"
-              style={{ containerType: "inline-size" }}
-            >
-              <img
-                src={`data:image/png;base64,${item.imageB64}`}
-                alt={item.headline}
-                crossOrigin="anonymous"
-                className="absolute inset-0 w-full h-full object-cover"
-              />
-              <AdTextOverlay
-                headline={item.headline}
-                subheadline={item.subheadline}
-                cta={item.cta}
-              />
-
-            </div>
+            <img
+              src={`data:image/png;base64,${item.imageB64}`}
+              alt={item.headline}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
             <button
               onClick={handleDownload}
-              disabled={exporting}
-              className="absolute top-3 left-3 z-10 w-10 h-10 rounded-full bg-white/90 backdrop-blur text-[#0B192C] flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 hover:bg-white transition-all disabled:opacity-60"
+              className="absolute top-3 left-3 z-10 w-10 h-10 rounded-full bg-white/90 backdrop-blur text-[#0B192C] flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 hover:bg-white transition-all"
               aria-label="הורד גרפיקה"
               title="הורד PNG"
             >
-              {exporting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Download className="w-4 h-4" />
-              )}
+              <Download className="w-4 h-4" />
             </button>
           </>
         )}
       </div>
-
 
       {showFooter && effectiveCopyStatus !== "success" && (
         <button
