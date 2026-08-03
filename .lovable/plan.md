@@ -1,61 +1,38 @@
-# Decouple Ad Copy from Graphic Generation
+# Clean commercial photography + frontend text overlay
 
-Split the current "Creative Pack" flow so graphics generate first (image + on-graphic headline/subheadline/CTA only), and long-form ad copy is generated on-demand per card via a new endpoint with a rewritten Direct Response prompt.
+Split the pipeline cleanly: the image model produces a text-free, high-end commercial photograph with negative space, and the app renders the Hebrew headline / subheadline / CTA on top with real fonts.
 
-## 1. Backend — new endpoint `src/routes/api/generate-ad-copy.ts`
+## 1. Image prompt becomes photography-only
 
-New TanStack server route (`POST /api/generate-ad-copy`) using OpenAI `gpt-4o`, `response_format: json_object`, temperature ~0.9.
+In `src/routes/api/generate-ad-image.ts`:
 
-- **Input (Zod):** `clientName: string`, `clientBrief: string`, `graphicHeadline: string`, optional `graphicSubheadline`, `clientIndustry`, `targetAudience`, `brandVibe`.
-- **System prompt:** the exact Direct Response spec supplied (5–10 line authentic copy; Hook → Bridge/Problem → Solution → 2–3 bullets → CTA; blacklist: 'חוויה קולינרית', 'קסום', 'חלום', 'פינוק', 'בלתי נשכח', 'מדהים', 'מרגש', 'מסע קולינרי'), with `${graphicHeadline}` and `${clientBrief}` interpolated.
-- **Output:** `{ primary_text: string, link_headline: string }` — parsed with the same safe-clean logic as `generate-graphics.ts` and reasonable fallbacks on failure.
-- Errors surface `429`/`402` distinctly like existing routes.
+- Add a `artDirectorSuffix` constant with the exact block requested (style, camera & lighting, composition with negative space, negative constraints: no text/letters/logos/watermarks, no plastic or cheap 3D look).
+- Rewrite `buildPrompt` into a visual-only builder: business context (industry, audience, brand vibe, brand colors as a *color palette* instruction), the visual part of the art-director brief, the photo/reference usage block, then `. ${artDirectorSuffix}`.
+- Remove every text-rendering instruction: no `headline`, `subheadline`, or `cta` is sent to the image API anymore, and the "text must appear letter by letter" section is deleted.
+- Style references keep their role (lighting, palette, composition language) but explicitly "ignore their text and overlays".
+- Also instruct where the negative space should sit (top or bottom third) so the overlay always lands on clean area.
+- Route response stays exactly the same shape (`{ b64 }`), so the frontend keeps working unchanged.
 
-## 2. Backend — trim `src/routes/api/generate-graphics.ts`
+## 2. Concept step stays text-generation only
 
-- Remove `primary_text` / `link_headline` from the system prompt, JSON schema, `GraphicText` type, `safeParseItems`, and the pad-to-amount fallback loop.
-- Restore the tighter prompt focused only on on-graphic headline/subheadline/CTA + `designBrief`.
-- No change to `/api/generate-ad-image` (already only uses on-graphic text).
+In `src/routes/api/generate-graphics.ts`:
 
-## 3. Types & data flow
+- Keep `headline` / `subheadline` / `cta` (now used only by the UI overlay).
+- Reword the `designBrief` instruction so it describes only the photographic scene: subject, setting, lighting, mood, palette, composition and where the empty area is — no fonts, no badges, no CTA-button design, no text placement copy.
+- Keep the same JSON shape and parser, so nothing else changes.
 
-- `GraphicItem` in `GraphicCard.tsx`: keep `primaryText?`, `linkHeadline?` fields but they start empty; add `copyStatus?: "idle" | "loading" | "success" | "error"` and `copyError?: string`.
-- `CreateScreen.tsx`: stop reading `primary_text`/`link_headline` from `/api/generate-graphics`; seed each item with `copyStatus: "idle"`. Add a handler `handleGenerateCopy(index)` that:
-  1. Sets that item's `copyStatus = "loading"`.
-  2. POSTs to `/api/generate-ad-copy` with client context + that card's `headline` (+ `subheadline`).
-  3. On success: updates the item with `primaryText`, `linkHeadline`, `copyStatus = "success"`, then calls `saveGeneratedGraphic` (or a new `updateGeneratedGraphic`) to persist the copy for the already-saved row.
-  4. On error: `copyStatus = "error"` + toast.
-- Pass `onGenerateCopy` down through `SuccessGrid` → `GraphicCard`.
+## 3. Text overlay on the card
 
-## 4. Persistence — `src/hooks/useGeneratedGraphics.ts`
+In `src/components/GraphicCard.tsx`:
 
-- Keep the existing `primary_text` / `link_headline` nullable columns (migration from the previous turn stays).
-- Add `updateGraphicCopy(id, { primaryText, linkHeadline })` that patches the existing row after copy generation, so Gallery keeps working and re-renders show copy on refresh. No new migration needed.
+- Wrap the 1:1 image in a composition layer: photo `object-cover`, a soft dark gradient scrim for legibility, and RTL Hebrew typography using the already-installed Rubik/Heebo fonts — large bold headline, lighter subheadline, and a pill-shaped CTA button.
+- Overlay text is sized with `clamp()`/percentage units so it scales with the card and stays readable in the grid.
+- Download now exports the *composed* card (photo + overlay) as PNG at 1080x1080 using the already-installed `html-to-image`, instead of dumping the raw base64.
+- Loading / error / copy-panel behaviour is untouched.
 
-## 5. UI — `src/components/GraphicCard.tsx`
+Gallery cards reuse the same component, so saved graphics get the same overlay from their stored headline/subheadline/CTA.
 
-Bottom section becomes state-driven (only rendered when `status === "success"`):
+## Notes
 
-- **`copyStatus === "idle"` (or undefined):** show a single premium button, centered, full-width inside the card footer:
-  - Label: `✏️ צור קופי למודעה` (lucide `PenLine` icon + text)
-  - Style: `rounded-2xl bg-[#0B192C] text-white h-11 px-5 text-sm font-medium hover:bg-[#0B192C]/90 active:scale-[0.98] transition-all shadow-sm`
-- **`copyStatus === "loading"`:** same button, disabled, spinner (`Loader2 animate-spin`) + `מייצר קופי…`.
-- **`copyStatus === "error"`:** small red helper + retry button (same handler).
-- **`copyStatus === "success"`:** reveal the existing minimalist container (`rounded-2xl bg-black/[0.03] border border-black/5 p-4`) with the two labeled blocks (`טקסט מרכזי למודעה`, `כותרת ממומן (ליד הכפתור)`) and the existing `CopyButton` components — unchanged design.
-- Older Gallery rows that already have persisted `primaryText`/`linkHeadline` render directly in the success state (treat non-empty persisted copy as `success`).
-
-## 6. Regression checks
-
-- `SuccessGrid` continues to accept `items` + forwards the new `onGenerateCopy` prop; card heights already flexible.
-- `GalleryScreen` reads persisted rows; unchanged (copy is optional and only shown when present).
-- `generate-brief`, `ClientDialog`, `generate-ad-image`, auth flow untouched.
-
-## Files touched
-
-- new: `src/routes/api/generate-ad-copy.ts`
-- edit: `src/routes/api/generate-graphics.ts` (remove copy fields from prompt/schema/parser)
-- edit: `src/components/GraphicCard.tsx` (idle button + state-driven footer)
-- edit: `src/components/SuccessGrid.tsx` (pass `onGenerateCopy` prop)
-- edit: `src/components/CreateScreen.tsx` (new `handleGenerateCopy`, stop seeding copy from graphics call)
-- edit: `src/hooks/useGeneratedGraphics.ts` (add `updateGraphicCopy`)
-- no new migration
+- No database or storage changes; the stored PNG remains the clean background and the text is composed at render/export time.
+- No new packages — `html-to-image`, `@fontsource/rubik`, `@fontsource/heebo` are already installed.
