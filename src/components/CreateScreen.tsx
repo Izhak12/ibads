@@ -48,6 +48,7 @@ export function CreateScreen() {
     referenceUrls: string[],
     clientSnapshot: NonNullable<typeof client>,
     idx: number,
+    systemDesign: DesignSystem | null,
   ) => {
     const runOnce = async () => {
       setItems((prev) =>
@@ -71,8 +72,10 @@ export function CreateScreen() {
             brandColors: clientSnapshot.brandColors,
             assetUrls,
             referenceUrls,
+            systemDesign,
           }),
         });
+
         const data = await res.json();
         if (!res.ok || !data?.b64) throw new Error(data?.error ?? "שגיאה ביצירת התמונה");
         setItems((prev) =>
