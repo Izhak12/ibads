@@ -118,6 +118,37 @@ export function ClientDialog({
     }
   };
 
+  const handleGenerateDesignSystem = async () => {
+    if (!name.trim() || designLoading) return;
+    setDesignLoading(true);
+    try {
+      const res = await fetch("/api/generate-design-system", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientName: name.trim(),
+          clientIndustry: industry.trim(),
+          targetAudience: audience.trim(),
+          brandVibe: vibe.trim(),
+          brandColors: colors,
+          brief: brief.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error ?? "שגיאה");
+      const ds = data.designSystem as DesignSystem;
+      setDesignSystem(ds);
+      if (editing) await updateClient(editing.id, { designSystem: ds });
+      toast.success("מערכת העיצוב נקבעה");
+    } catch (err) {
+      toast.error("שגיאה ביצירת מערכת העיצוב", {
+        description: err instanceof Error ? err.message : undefined,
+      });
+    } finally {
+      setDesignLoading(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!name.trim()) return;
     const payload = {
@@ -128,7 +159,9 @@ export function ClientDialog({
       coreOffers: offers.trim(),
       brandColors: colors,
       brief: brief.trim(),
+      designSystem,
     };
+
     try {
       if (editing) {
         await updateClient(editing.id, payload);
