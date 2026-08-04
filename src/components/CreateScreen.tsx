@@ -196,6 +196,32 @@ export function CreateScreen() {
     setPreview("loading");
     setItems([]);
     try {
+      // Lock a design system once per client, then reuse it for every future graphic.
+      let systemDesign: DesignSystem | null = client.designSystem ?? null;
+      if (!systemDesign) {
+        try {
+          const dsRes = await fetch("/api/generate-design-system", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              clientName: client.name,
+              clientIndustry: client.industry,
+              targetAudience: client.targetAudience,
+              brandVibe: client.brandVibe,
+              brandColors: client.brandColors,
+              brief: [client.brief, brief].filter(Boolean).join("\n\n"),
+            }),
+          });
+          const dsData = await dsRes.json();
+          if (dsRes.ok && dsData?.designSystem) {
+            systemDesign = dsData.designSystem as DesignSystem;
+            await updateClient(client.id, { designSystem: systemDesign });
+          }
+        } catch (err) {
+          console.error("Failed to create design system:", err);
+        }
+      }
+
       const res = await fetch("/api/generate-graphics", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -241,8 +267,18 @@ export function CreateScreen() {
 
       const clientSnapshot = client;
       void Promise.all(
-        texts.map((t, i) => generateOneImage(t, perItemAssets[i], referenceUrls, clientSnapshot, i)),
+        texts.map((t, i) =>
+          generateOneImage(
+            t,
+            perItemAssets[i],
+            referenceUrls,
+            clientSnapshot,
+            i,
+            systemDesign,
+          ),
+        ),
       );
+
     } catch (err) {
       console.error(err);
       toast.error("שגיאה ביצירת הגרפיקות", {
