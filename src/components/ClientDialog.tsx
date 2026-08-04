@@ -51,6 +51,8 @@ export function ClientDialog({
   const [colors, setColors] = useState<string[]>(["#0B192C", "#1E67FF"]);
   const [brief, setBrief] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [designSystem, setDesignSystem] = useState<DesignSystem | null>(null);
+  const [designLoading, setDesignLoading] = useState(false);
 
   // Sync when dialog opens / editing target changes
   useEffect(() => {
@@ -63,6 +65,7 @@ export function ClientDialog({
       setOffers(editing.coreOffers);
       setColors(editing.brandColors.length ? editing.brandColors : ["#0B192C", "#1E67FF"]);
       setBrief(editing.brief);
+      setDesignSystem(editing.designSystem ?? null);
     } else {
       setName("");
       setIndustry("");
@@ -71,9 +74,12 @@ export function ClientDialog({
       setOffers("");
       setColors(["#0B192C", "#1E67FF"]);
       setBrief("");
+      setDesignSystem(null);
     }
     setGenerating(false);
+    setDesignLoading(false);
   }, [clientDialogOpen, editing]);
+
 
   const toggleColor = (c: string) => {
     setColors((prev) =>
