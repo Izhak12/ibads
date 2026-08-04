@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/select";
 import { AppleSlider } from "./AppleSlider";
 import { PreviewPanel, type PreviewState } from "./PreviewPanel";
-import { useClients } from "@/context/ClientsContext";
+import { useClients, type DesignSystem } from "@/context/ClientsContext";
 import { useClientAssets } from "@/hooks/useClientAssets";
 import { saveGeneratedGraphic, updateGraphicCopy } from "@/hooks/useGeneratedGraphics";
 import { useQueryClient } from "@tanstack/react-query";
