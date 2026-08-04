@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/select";
 import { AppleSlider } from "./AppleSlider";
 import { PreviewPanel, type PreviewState } from "./PreviewPanel";
-import { useClients } from "@/context/ClientsContext";
+import { useClients, type DesignSystem } from "@/context/ClientsContext";
 import { useClientAssets } from "@/hooks/useClientAssets";
 import { saveGeneratedGraphic, updateGraphicCopy } from "@/hooks/useGeneratedGraphics";
 import { useQueryClient } from "@tanstack/react-query";
@@ -20,8 +20,9 @@ import type { GraphicItem } from "./GraphicCard";
 const ease = [0.22, 1, 0.36, 1] as const;
 
 export function CreateScreen() {
-  const { clients, selectedClientId, setSelectedClientId, openClientDialog, openClientDialogFor } =
+  const { clients, selectedClientId, setSelectedClientId, openClientDialog, openClientDialogFor, updateClient } =
     useClients();
+
   const qc = useQueryClient();
   const [text, setText] = useState("");
   const [brief, setBrief] = useState("");
@@ -48,6 +49,7 @@ export function CreateScreen() {
     referenceUrls: string[],
     clientSnapshot: NonNullable<typeof client>,
     idx: number,
+    systemDesign: DesignSystem | null,
   ) => {
     const runOnce = async () => {
       setItems((prev) =>
@@ -71,8 +73,10 @@ export function CreateScreen() {
             brandColors: clientSnapshot.brandColors,
             assetUrls,
             referenceUrls,
+            systemDesign,
           }),
         });
+
         const data = await res.json();
         if (!res.ok || !data?.b64) throw new Error(data?.error ?? "שגיאה ביצירת התמונה");
         setItems((prev) =>
@@ -193,6 +197,32 @@ export function CreateScreen() {
     setPreview("loading");
     setItems([]);
     try {
+      // Lock a design system once per client, then reuse it for every future graphic.
+      let systemDesign: DesignSystem | null = client.designSystem ?? null;
+      if (!systemDesign) {
+        try {
+          const dsRes = await fetch("/api/generate-design-system", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              clientName: client.name,
+              clientIndustry: client.industry,
+              targetAudience: client.targetAudience,
+              brandVibe: client.brandVibe,
+              brandColors: client.brandColors,
+              brief: [client.brief, brief].filter(Boolean).join("\n\n"),
+            }),
+          });
+          const dsData = await dsRes.json();
+          if (dsRes.ok && dsData?.designSystem) {
+            systemDesign = dsData.designSystem as DesignSystem;
+            await updateClient(client.id, { designSystem: systemDesign });
+          }
+        } catch (err) {
+          console.error("Failed to create design system:", err);
+        }
+      }
+
       const res = await fetch("/api/generate-graphics", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -238,8 +268,18 @@ export function CreateScreen() {
 
       const clientSnapshot = client;
       void Promise.all(
-        texts.map((t, i) => generateOneImage(t, perItemAssets[i], referenceUrls, clientSnapshot, i)),
+        texts.map((t, i) =>
+          generateOneImage(
+            t,
+            perItemAssets[i],
+            referenceUrls,
+            clientSnapshot,
+            i,
+            systemDesign,
+          ),
+        ),
       );
+
     } catch (err) {
       console.error(err);
       toast.error("שגיאה ביצירת הגרפיקות", {

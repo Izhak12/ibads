@@ -8,6 +8,12 @@ import {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+export type DesignSystem = {
+  colors: string[];
+  headlineFont: string;
+  ctaStyle: string;
+};
+
 export type Client = {
   id: string;
   name: string;
@@ -17,6 +23,7 @@ export type Client = {
   coreOffers: string;
   brandColors: string[];
   brief: string;
+  designSystem: DesignSystem | null;
 };
 
 type ClientRow = {
@@ -28,7 +35,11 @@ type ClientRow = {
   core_offers: string;
   brand_colors: string[];
   brief: string;
+  design_system: DesignSystem | null;
 };
+
+const SELECT_COLS =
+  "id,name,industry,target_audience,brand_vibe,core_offers,brand_colors,brief,design_system";
 
 const fromRow = (r: ClientRow): Client => ({
   id: r.id,
@@ -39,6 +50,7 @@ const fromRow = (r: ClientRow): Client => ({
   coreOffers: r.core_offers,
   brandColors: r.brand_colors ?? [],
   brief: r.brief,
+  designSystem: r.design_system ?? null,
 });
 
 const toRowPayload = (c: Omit<Client, "id">) => ({
@@ -49,7 +61,9 @@ const toRowPayload = (c: Omit<Client, "id">) => ({
   core_offers: c.coreOffers,
   brand_colors: c.brandColors,
   brief: c.brief,
+  design_system: c.designSystem,
 });
+
 
 type Ctx = {
   clients: Client[];
@@ -86,12 +100,10 @@ export function ClientsProvider({ children }: { children: ReactNode }) {
       if (!user) return [];
       const { data, error } = await supabase
         .from("clients")
-        .select(
-          "id,name,industry,target_audience,brand_vibe,core_offers,brand_colors,brief",
-        )
+        .select(SELECT_COLS)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []).map((r) => fromRow(r as ClientRow));
+      return (data ?? []).map((r) => fromRow(r as unknown as ClientRow));
     },
   });
 
@@ -102,12 +114,10 @@ export function ClientsProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from("clients")
         .insert({ ...toRowPayload(c), user_id: user.id })
-        .select(
-          "id,name,industry,target_audience,brand_vibe,core_offers,brand_colors,brief",
-        )
+        .select(SELECT_COLS)
         .single();
       if (error) throw error;
-      return fromRow(data as ClientRow);
+      return fromRow(data as unknown as ClientRow);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QUERY_KEY });
@@ -130,6 +140,7 @@ export function ClientsProvider({ children }: { children: ReactNode }) {
         core_offers?: string;
         brand_colors?: string[];
         brief?: string;
+        design_system?: DesignSystem | null;
       } = {};
       if (patch.name !== undefined) row.name = patch.name;
       if (patch.industry !== undefined) row.industry = patch.industry;
@@ -139,9 +150,12 @@ export function ClientsProvider({ children }: { children: ReactNode }) {
       if (patch.coreOffers !== undefined) row.core_offers = patch.coreOffers;
       if (patch.brandColors !== undefined) row.brand_colors = patch.brandColors;
       if (patch.brief !== undefined) row.brief = patch.brief;
+      if (patch.designSystem !== undefined)
+        row.design_system = patch.designSystem;
       const { error } = await supabase.from("clients").update(row).eq("id", id);
       if (error) throw error;
     },
+
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QUERY_KEY });
     },

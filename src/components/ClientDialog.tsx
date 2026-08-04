@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useClients } from "@/context/ClientsContext";
+import { useClients, type DesignSystem } from "@/context/ClientsContext";
 import { useClientAssets, type ClientAsset } from "@/hooks/useClientAssets";
 
 
@@ -51,6 +51,8 @@ export function ClientDialog({
   const [colors, setColors] = useState<string[]>(["#0B192C", "#1E67FF"]);
   const [brief, setBrief] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [designSystem, setDesignSystem] = useState<DesignSystem | null>(null);
+  const [designLoading, setDesignLoading] = useState(false);
 
   // Sync when dialog opens / editing target changes
   useEffect(() => {
@@ -63,6 +65,7 @@ export function ClientDialog({
       setOffers(editing.coreOffers);
       setColors(editing.brandColors.length ? editing.brandColors : ["#0B192C", "#1E67FF"]);
       setBrief(editing.brief);
+      setDesignSystem(editing.designSystem ?? null);
     } else {
       setName("");
       setIndustry("");
@@ -71,9 +74,12 @@ export function ClientDialog({
       setOffers("");
       setColors(["#0B192C", "#1E67FF"]);
       setBrief("");
+      setDesignSystem(null);
     }
     setGenerating(false);
+    setDesignLoading(false);
   }, [clientDialogOpen, editing]);
+
 
   const toggleColor = (c: string) => {
     setColors((prev) =>
@@ -112,6 +118,37 @@ export function ClientDialog({
     }
   };
 
+  const handleGenerateDesignSystem = async () => {
+    if (!name.trim() || designLoading) return;
+    setDesignLoading(true);
+    try {
+      const res = await fetch("/api/generate-design-system", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientName: name.trim(),
+          clientIndustry: industry.trim(),
+          targetAudience: audience.trim(),
+          brandVibe: vibe.trim(),
+          brandColors: colors,
+          brief: brief.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error ?? "שגיאה");
+      const ds = data.designSystem as DesignSystem;
+      setDesignSystem(ds);
+      if (editing) await updateClient(editing.id, { designSystem: ds });
+      toast.success("מערכת העיצוב נקבעה");
+    } catch (err) {
+      toast.error("שגיאה ביצירת מערכת העיצוב", {
+        description: err instanceof Error ? err.message : undefined,
+      });
+    } finally {
+      setDesignLoading(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!name.trim()) return;
     const payload = {
@@ -122,7 +159,9 @@ export function ClientDialog({
       coreOffers: offers.trim(),
       brandColors: colors,
       brief: brief.trim(),
+      designSystem,
     };
+
     try {
       if (editing) {
         await updateClient(editing.id, payload);
@@ -274,7 +313,62 @@ export function ClientDialog({
               <AssetsUploader clientId={editingClientId} kind="reference" />
             </Section>
 
+            {/* Locked design system */}
+            <Section title="מערכת עיצוב קבועה">
+              <div className="text-[11px] text-black/50 leading-relaxed -mt-1">
+                נקבעת פעם אחת ומוזרקת אוטומטית לכל גרפיקה של הלקוח — כך כל המודעות שומרות אותה זהות ויזואלית.
+              </div>
+              {designSystem ? (
+                <div className="rounded-2xl border border-black/5 bg-black/[0.02] p-4 flex flex-col gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-black/60 w-24">פלטת צבעים</span>
+                    <div className="flex gap-2">
+                      {designSystem.colors.map((c) => (
+                        <span
+                          key={c}
+                          className="w-7 h-7 rounded-lg border border-black/10"
+                          style={{ backgroundColor: c }}
+                          title={c}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex gap-2 text-xs">
+                    <span className="text-black/60 w-24 shrink-0">פונט כותרת</span>
+                    <span className="text-[#0B192C]">{designSystem.headlineFont}</span>
+                  </div>
+                  <div className="flex gap-2 text-xs">
+                    <span className="text-black/60 w-24 shrink-0">סגנון CTA</span>
+                    <span className="text-[#0B192C] leading-relaxed">
+                      {designSystem.ctaStyle}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-black/10 bg-black/[0.02] p-4 text-xs text-black/50">
+                  עדיין לא נקבעה מערכת עיצוב. היא תיווצר אוטומטית ביצירת הגרפיקות הראשונה, או צור אותה עכשיו.
+                </div>
+              )}
+              <button
+                onClick={handleGenerateDesignSystem}
+                disabled={!name.trim() || designLoading}
+                className="h-11 rounded-2xl bg-black/5 text-[#0B192C] text-sm font-medium hover:bg-black/10 transition-colors disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center gap-2"
+              >
+                {designLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    קובע מערכת עיצוב…
+                  </>
+                ) : designSystem ? (
+                  "צור מערכת עיצוב מחדש"
+                ) : (
+                  "צור מערכת עיצוב"
+                )}
+              </button>
+            </Section>
+
             {/* AI Brief */}
+
 
             <Section title="אפיון קריאייטיבי חכם">
               <button

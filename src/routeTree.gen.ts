@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiGenerateGraphicsRouteImport } from './routes/api/generate-graphics'
+import { Route as ApiGenerateDesignSystemRouteImport } from './routes/api/generate-design-system'
 import { Route as ApiGenerateBriefRouteImport } from './routes/api/generate-brief'
 import { Route as ApiGenerateAdImageRouteImport } from './routes/api/generate-ad-image'
 import { Route as ApiGenerateAdCopyRouteImport } from './routes/api/generate-ad-copy'
@@ -23,6 +24,11 @@ const IndexRoute = IndexRouteImport.update({
 const ApiGenerateGraphicsRoute = ApiGenerateGraphicsRouteImport.update({
   id: '/api/generate-graphics',
   path: '/api/generate-graphics',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiGenerateDesignSystemRoute = ApiGenerateDesignSystemRouteImport.update({
+  id: '/api/generate-design-system',
+  path: '/api/generate-design-system',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiGenerateBriefRoute = ApiGenerateBriefRouteImport.update({
@@ -46,6 +52,7 @@ export interface FileRoutesByFullPath {
   '/api/generate-ad-copy': typeof ApiGenerateAdCopyRoute
   '/api/generate-ad-image': typeof ApiGenerateAdImageRoute
   '/api/generate-brief': typeof ApiGenerateBriefRoute
+  '/api/generate-design-system': typeof ApiGenerateDesignSystemRoute
   '/api/generate-graphics': typeof ApiGenerateGraphicsRoute
 }
 export interface FileRoutesByTo {
@@ -53,6 +60,7 @@ export interface FileRoutesByTo {
   '/api/generate-ad-copy': typeof ApiGenerateAdCopyRoute
   '/api/generate-ad-image': typeof ApiGenerateAdImageRoute
   '/api/generate-brief': typeof ApiGenerateBriefRoute
+  '/api/generate-design-system': typeof ApiGenerateDesignSystemRoute
   '/api/generate-graphics': typeof ApiGenerateGraphicsRoute
 }
 export interface FileRoutesById {
@@ -61,6 +69,7 @@ export interface FileRoutesById {
   '/api/generate-ad-copy': typeof ApiGenerateAdCopyRoute
   '/api/generate-ad-image': typeof ApiGenerateAdImageRoute
   '/api/generate-brief': typeof ApiGenerateBriefRoute
+  '/api/generate-design-system': typeof ApiGenerateDesignSystemRoute
   '/api/generate-graphics': typeof ApiGenerateGraphicsRoute
 }
 export interface FileRouteTypes {
@@ -70,6 +79,7 @@ export interface FileRouteTypes {
     | '/api/generate-ad-copy'
     | '/api/generate-ad-image'
     | '/api/generate-brief'
+    | '/api/generate-design-system'
     | '/api/generate-graphics'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -77,6 +87,7 @@ export interface FileRouteTypes {
     | '/api/generate-ad-copy'
     | '/api/generate-ad-image'
     | '/api/generate-brief'
+    | '/api/generate-design-system'
     | '/api/generate-graphics'
   id:
     | '__root__'
@@ -84,6 +95,7 @@ export interface FileRouteTypes {
     | '/api/generate-ad-copy'
     | '/api/generate-ad-image'
     | '/api/generate-brief'
+    | '/api/generate-design-system'
     | '/api/generate-graphics'
   fileRoutesById: FileRoutesById
 }
@@ -92,6 +104,7 @@ export interface RootRouteChildren {
   ApiGenerateAdCopyRoute: typeof ApiGenerateAdCopyRoute
   ApiGenerateAdImageRoute: typeof ApiGenerateAdImageRoute
   ApiGenerateBriefRoute: typeof ApiGenerateBriefRoute
+  ApiGenerateDesignSystemRoute: typeof ApiGenerateDesignSystemRoute
   ApiGenerateGraphicsRoute: typeof ApiGenerateGraphicsRoute
 }
 
@@ -109,6 +122,13 @@ declare module '@tanstack/react-router' {
       path: '/api/generate-graphics'
       fullPath: '/api/generate-graphics'
       preLoaderRoute: typeof ApiGenerateGraphicsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/generate-design-system': {
+      id: '/api/generate-design-system'
+      path: '/api/generate-design-system'
+      fullPath: '/api/generate-design-system'
+      preLoaderRoute: typeof ApiGenerateDesignSystemRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/generate-brief': {
@@ -140,18 +160,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGenerateAdCopyRoute: ApiGenerateAdCopyRoute,
   ApiGenerateAdImageRoute: ApiGenerateAdImageRoute,
   ApiGenerateBriefRoute: ApiGenerateBriefRoute,
+  ApiGenerateDesignSystemRoute: ApiGenerateDesignSystemRoute,
   ApiGenerateGraphicsRoute: ApiGenerateGraphicsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
