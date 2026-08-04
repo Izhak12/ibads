@@ -13,9 +13,17 @@ const InputSchema = z.object({
   brandColors: z.array(z.string()).optional().default([]),
   assetUrls: z.array(z.string()).optional().default([]),
   referenceUrls: z.array(z.string()).optional().default([]),
+  systemDesign: z
+    .object({
+      colors: z.array(z.string()).optional().default([]),
+      headlineFont: z.string().optional().default(""),
+      ctaStyle: z.string().optional().default(""),
+    })
+    .nullish(),
 });
 
 type Input = z.infer<typeof InputSchema>;
+
 
 function buildPrompt(input: Input, hasPhotos: boolean, hasRefs: boolean) {
   const clientName = input.clientName || "לא צוין";
