@@ -56,6 +56,7 @@ export type Database = {
           brief: string
           core_offers: string
           created_at: string
+          design_system: Json | null
           id: string
           industry: string
           name: string
@@ -69,6 +70,7 @@ export type Database = {
           brief?: string
           core_offers?: string
           created_at?: string
+          design_system?: Json | null
           id?: string
           industry?: string
           name: string
@@ -82,6 +84,7 @@ export type Database = {
           brief?: string
           core_offers?: string
           created_at?: string
+          design_system?: Json | null
           id?: string
           industry?: string
           name?: string
