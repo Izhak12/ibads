@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useClients } from "@/context/ClientsContext";
+import { useClients, type DesignSystem } from "@/context/ClientsContext";
 import { useClientAssets, type ClientAsset } from "@/hooks/useClientAssets";
 
 
