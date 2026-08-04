@@ -8,6 +8,12 @@ import {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+export type DesignSystem = {
+  colors: string[];
+  headlineFont: string;
+  ctaStyle: string;
+};
+
 export type Client = {
   id: string;
   name: string;
@@ -17,6 +23,7 @@ export type Client = {
   coreOffers: string;
   brandColors: string[];
   brief: string;
+  designSystem: DesignSystem | null;
 };
 
 type ClientRow = {
@@ -28,7 +35,11 @@ type ClientRow = {
   core_offers: string;
   brand_colors: string[];
   brief: string;
+  design_system: DesignSystem | null;
 };
+
+const SELECT_COLS =
+  "id,name,industry,target_audience,brand_vibe,core_offers,brand_colors,brief,design_system";
 
 const fromRow = (r: ClientRow): Client => ({
   id: r.id,
@@ -39,6 +50,7 @@ const fromRow = (r: ClientRow): Client => ({
   coreOffers: r.core_offers,
   brandColors: r.brand_colors ?? [],
   brief: r.brief,
+  designSystem: r.design_system ?? null,
 });
 
 const toRowPayload = (c: Omit<Client, "id">) => ({
@@ -49,7 +61,9 @@ const toRowPayload = (c: Omit<Client, "id">) => ({
   core_offers: c.coreOffers,
   brand_colors: c.brandColors,
   brief: c.brief,
+  design_system: c.designSystem,
 });
+
 
 type Ctx = {
   clients: Client[];
